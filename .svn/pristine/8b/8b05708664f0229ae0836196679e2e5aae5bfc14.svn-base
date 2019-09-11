@@ -1,0 +1,239 @@
+package cn.wtu.broadcast.openapi.provider;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import cn.wtu.broadcast.openapi.api.TAdministrativeDivisionService;
+import cn.wtu.broadcast.openapi.api.TDictionaryService;
+import cn.wtu.broadcast.openapi.api.ThirdBroadcastDataService;
+import cn.wtu.broadcast.openapi.dao.BBroadcastDataMapper;
+import cn.wtu.broadcast.openapi.dao.BProgramChannelMapper;
+import cn.wtu.broadcast.openapi.dao.TAdministrativeDivisionMapper;
+import cn.wtu.broadcast.openapi.dao.extend.BBroadcastDataExtMapper;
+import cn.wtu.broadcast.openapi.dao.extend.BBroadcastTimingExtMapper;
+import cn.wtu.broadcast.openapi.model.BBroadcastData;
+import cn.wtu.broadcast.openapi.model.BProgramChannel;
+import cn.wtu.broadcast.openapi.model.TAdministrativeDivision;
+import cn.wtu.broadcast.openapi.model.TDictionary;
+import cn.wtu.broadcast.openapi.util.UDPUtil;
+import cn.wtu.broadcast.openapi.vo.ThirdBroadcastDataVO;
+import cn.wtu.broadcast.parent.db.api.DBInterface;
+import cn.wtu.broadcast.parent.enums.BroadcastTypeEnum;
+import cn.wtu.broadcast.parent.vo.EBITParamsVO;
+import cn.wtu.broadcast.parent.vo.IpVO;
+
+@Service("thirdBroadcastDataService")
+public class ThirdBroadcastDataServiceImpl extends ParentServiceImpl<ThirdBroadcastDataVO>
+		implements ThirdBroadcastDataService {
+	@Autowired
+	private TDictionaryService tDictionaryService;
+	@SuppressWarnings("unused")
+	private static org.slf4j.Logger logger = LoggerFactory.getLogger(ThirdBroadcastDataServiceImpl.class);
+
+	private final BBroadcastDataExtMapper broadcastDataExtMapper;
+	@Autowired
+	private BBroadcastDataMapper bBroadcastDataMapper;
+	@Autowired
+	private BProgramChannelMapper bProgramChannelMapper;
+	@Autowired
+	private TAdministrativeDivisionService tAdministrativeDivisionService;
+
+	private final BBroadcastTimingExtMapper broadcastTimingExtMapper;
+
+	private final TAdministrativeDivisionMapper administrativeDivisionMapper;
+
+	@Autowired
+	public ThirdBroadcastDataServiceImpl(BBroadcastDataExtMapper broadcastDataExtMapper,
+			BBroadcastTimingExtMapper broadcastTimingExtMapper,
+			TAdministrativeDivisionMapper administrativeDivisionMapper) {
+		super();
+		this.broadcastDataExtMapper = broadcastDataExtMapper;
+		this.broadcastTimingExtMapper = broadcastTimingExtMapper;
+		this.administrativeDivisionMapper = administrativeDivisionMapper;
+	}
+
+	@Override
+	protected DBInterface<ThirdBroadcastDataVO> getDao() {
+		return null;
+	}
+
+	/**
+	 * 根据广播类型和广播Id查询数据
+	 *
+	 * @param Integer
+	 *            broadcastType,Integer fId
+	 * @return EBITParamsVO
+	 */
+	public EBITParamsVO getModelByBroadcastTypeAndId(Integer broadcastType, Integer fId) {
+		EBITParamsVO thirdBroadcastData = null;
+		// 广播类型为-定时广播
+		if (broadcastType == BroadcastTypeEnum.timing.getCode()) {
+			thirdBroadcastData = broadcastTimingExtMapper.queryThirdBroadcastData(fId);
+			thirdBroadcastData.setfState(BroadcastTypeEnum.timing.getCode());
+		} else {
+			// 广播类型为-其他广播(广播数据表)
+			thirdBroadcastData = broadcastDataExtMapper.queryThirdBroadcastData(fId);
+			thirdBroadcastData.setfState(broadcastType);
+		}
+
+		// 用于存放 三方区域编码 2019/02/25 lxg
+		List<String> resourceCodeList = new ArrayList<String>();
+		// 用于存放 终端资源编码 2019/02/25 lxg
+		List<String> terminalCodeList = new ArrayList<String>();
+
+		// 将区域的id映射成 编码
+		String[] strCodes = thirdBroadcastData.getEBM_resource_codes().split(",");
+
+		/**
+		 * 遍历strCodes,查询出 所有的编码 注意 传输时 该字段占72byte 转为16进制后为72/4=18位lxg
+		 * 而数据库中存放的编码为14位，需要加上0101共18位封装给21数据包 2019-01-26
+		 */
+		for (String str : strCodes) {
+			TAdministrativeDivision division = administrativeDivisionMapper
+					.selectByPrimaryKey(Integer.parseInt(str.trim()));
+
+			resourceCodeList.add(thirdBroadcastData.getAdapterPrefix() + division.getfCode() + "00");
+			terminalCodeList.add(thirdBroadcastData.getAdapterPrefix() + division.getfCode() + "00");
+		}
+
+		// 将查询的 区域编码list 传递给thirdBroadcastData的 resourceCodeList
+		thirdBroadcastData.setResourceCodeList(resourceCodeList);
+		thirdBroadcastData.setTermialResourceCodeList(terminalCodeList);
+
+		return thirdBroadcastData;
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public int insertProvincialEBM(EBITParamsVO paramsVO) {
+		BProgramChannel bProgramChannel = new BProgramChannel();
+		bProgramChannel.setfMediaUrl(paramsVO.getAudioUrl());
+		int count = bProgramChannelMapper.insertSelective(bProgramChannel);
+
+		if (count > 0) {
+			BBroadcastData bBroadcastData = new BBroadcastData();
+			bBroadcastData.setfProgramPass(String.valueOf(bProgramChannel.getfId()));
+			// 省平台 直接传递 区域资源编码 ,EBM_resource_codes为空
+
+			bBroadcastData.setfVolumeControl(paramsVO.getVolume());
+			bBroadcastData.setfControlDevice(Integer.parseInt(paramsVO.getTermialDevice()));
+			// 消息来源和播发去向暂时写死 省级平台 / 广播电视，大喇叭
+			bBroadcastData.setfMessageSource(21);
+			bBroadcastData.setfBroadcastTo("25");
+			// 选择播发区域 江州区
+			Integer rootNode = tAdministrativeDivisionService.getRootNode();
+			bBroadcastData.setfBroadcastArea(rootNode.toString());
+
+			List<TDictionary> messageList = tDictionaryService.selectListByCriteria("message_type");
+			int messageTypeCode = 0;
+			for (int i = 0; i < messageList.size(); i++) {
+				if (messageList.get(i).getfThirdCode().equals(paramsVO.getEBM_type())) {
+					messageTypeCode = messageList.get(i).getfId();
+					break;
+				}
+			}
+			List<TDictionary> messagelevelList = tDictionaryService.selectListByCriteria("message_grade");
+			int messagelevelCode = 0;
+			for (int i = 0; i < messagelevelList.size(); i++) {
+				if ((byte) Integer.parseInt(messagelevelList.get(i).getfThirdCode()) == (paramsVO.getEBM_level())) {
+					messagelevelCode = messagelevelList.get(i).getfId();
+					break;
+				}
+			}
+			bBroadcastData.setfMessageType(messageTypeCode);
+			bBroadcastData.setfMessageLevel(messagelevelCode);
+			bBroadcastData.setfBeginTime(paramsVO.getEBM_start_time());
+			bBroadcastData.setfEffectiveTime(paramsVO.getEBMEndTime());
+			bBroadcastData.setfBroadcastType((byte) BroadcastTypeEnum.emergency.getCode());
+			//TODO 设置当前操作用户 lxg
+			//bBroadcastData.setfCreateId(getSessionUser().getfId()); //用户未登陆
+			
+			int count2 = bBroadcastDataMapper.insertSelective(bBroadcastData);
+			if (count2 > 0) {
+				System.out.println("success" + bBroadcastData.getfId());
+				return bBroadcastData.getfId();
+			}
+		}
+		return 0;
+	}
+
+	@Override
+	public IpVO getIpModelByBroadcastTypeAndId(Integer broadcastType, Integer fId) {
+		IpVO ipvo = new IpVO();
+		ipvo = broadcastDataExtMapper.queryIpvoData(fId);
+		
+		//TODO 如果节目信息是县级平台 或文转语 或话筒线路 则将BroadcastAudioUrl设为空  因为此时以上sql查出的节目音频信息是有问题的
+		//00县级平台 01话筒线路 02文转语
+		List<TDictionary> programChannelList = tDictionaryService.selectListByCriteria("program_channel");
+		for (int i = 0; i < programChannelList.size(); i++){
+			if("01".equals(programChannelList.get(i).getfThirdCode()) || "02".equals(programChannelList.get(i).getfThirdCode())
+					|| "00".equals(programChannelList.get(i).getfThirdCode())){
+				if(ipvo.getfProgramPass().equals(programChannelList.get(i).getfId().toString())){
+					ipvo.setBroadcastAudioUrl(null);
+				}
+			}
+		}
+		String audioUrl = "";
+		//0http 1rtsp
+		if(Integer.parseInt(ipvo.getIpProtocalSet()) == 0){
+			audioUrl = "http://" + ipvo.getServiceIp() + ":" + ipvo.getIpPlayPort() + "/vlc";
+		}else{
+			audioUrl = "rtsp://"+ipvo.getServiceIp()+":" +ipvo.getIpPlayPort() +"/vlc";
+			//audioUrl = "rtsp://"+ipvo.getServiceIp() +"/kk.mp3";
+		}
+		// 音频地址
+		// String audioUrl = "rtsp://"+ipvo.getServiceIp()+":" +ipvo.getIpPlayPort() +"/vlc";
+		// String audioUrl = "http://10.177.3.181:8088/vlc";
+		// rtsp://10.177.3.208:8554/vlc
+		// String audioUrl = ipvo.getBroadcastAudioUrl();
+		ipvo.setAudioURL(audioUrl);
+		ipvo.setBroadCastType("0" + ipvo.getBroadCastType());
+		ipvo.setEventLevel("0" + ipvo.getEventLevel());
+		// 用于存放 三方区域编码 
+		List<String> resourceCodeList = new ArrayList<String>();
+		//DeviceResourceCode不为空说明是设备广播 
+		if(ipvo.getDeviceResourceCode()!=null && StringUtils.isNotBlank(ipvo.getDeviceResourceCode())){
+			String terminalResourceCode = broadcastDataExtMapper.queryBroadcastDeviceResoucecode(fId);
+			String[] resourceCodes = terminalResourceCode.split(",");
+			for (String str : resourceCodes) {
+				resourceCodeList.add(str);
+				}
+		}else if((ipvo.getEBM_resource_codes()) != null && StringUtils.isNotBlank(ipvo.getEBM_resource_codes())){
+			// 将区域的id映射成 编码
+			String[] strCodes = ipvo.getEBM_resource_codes().split(",");
+			// 遍历strCodes,查询出 所有的编码
+			for (String str : strCodes) {
+				TAdministrativeDivision division = administrativeDivisionMapper
+						.selectByPrimaryKey(Integer.parseInt(str.trim()));
+				resourceCodeList.add("0612" + division.getfCode() + "00");
+			}
+		}
+		ipvo.setResourceCodeList(resourceCodeList);
+		ipvo.setEventType(UDPUtil.stringToAscii(ipvo.getEventType()));
+		// ipvo.setVolume((byte)intToHex(ipvo.getVolume().intValue()));
+		// //byte100 -- 16进制64 --byte
+		String asciiUrl = UDPUtil.stringToAscii(audioUrl);
+		int ascLen = asciiUrl.length();
+		String len = getRealLenth(Integer.toHexString(13 + ascLen / 2));
+		ipvo.setLen(len);
+		return ipvo;
+	}
+	public static String getRealLenth(String len) {
+		if (len.length() == 1) {
+			return "000" + len;
+		} else if (len.length() == 2) {
+			return "00" + len;
+		} else if (len.length() == 3) {
+			return "0" + len;
+		} else {
+			return len;
+		}
+	}
+
+}

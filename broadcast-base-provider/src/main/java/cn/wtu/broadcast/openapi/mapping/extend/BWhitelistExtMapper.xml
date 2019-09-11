@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.wtu.broadcast.openapi.dao.extend.BWhitelistExtMapper">
+    <resultMap id="BaseResultMap" type="cn.wtu.broadcast.openapi.vo.BWhitelistVO">
+        <id column="f_id" jdbcType="INTEGER" property="fId"/>
+        <result column="f_name" property="fName" jdbcType="VARCHAR"/>
+        <result column="f_telephone_number" jdbcType="VARCHAR" property="fTelephoneNumber"/>
+        <result column="f_control_device" jdbcType="INTEGER" property="fControlDevice"/>
+        <result column="f_permit" property="fPermit" jdbcType="TINYINT"/>
+        <result column="f_create_time" jdbcType="TIMESTAMP" property="fCreateTime"/>
+        <result column="f_update_time" jdbcType="TIMESTAMP" property="fUpdateTime"/>
+        <result column="f_creator_id" jdbcType="INTEGER" property="fCreatorId"/>
+        <result column="f_operator_id" jdbcType="INTEGER" property="fOperatorId"/>
+        <result column="f_area" jdbcType="VARCHAR" property="fArea"/>
+        <result column="f_delete_flag" jdbcType="BIT" property="fDeleteFlag"/>
+        <result column="f_real_area" property="fRealArea" jdbcType="VARCHAR"/>
+        <result column="creator" property="creator" jdbcType="VARCHAR"/>
+        <result column="operator" property="operator" jdbcType="VARCHAR"/>
+        <result column="deviceName" property="deviceName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="selectwhitelist" parameterType="java.util.Map" resultMap="BaseResultMap">
+        SELECT r.*,b.f_device_name as deviceName
+        from b_whitelist r
+        LEFT JOIN t_administrative_division t
+        ON r.f_area=t.f_id
+        LEFT JOIN b_device_info b
+        on r.f_control_device=b.f_id
+        WHERE r.f_delete_flag=0
+        <if test="searchText!='' and searchText!=null">
+            AND(
+            r.f_name LIKE binary CONCAT('%', #{searchText},'%') or
+            r.f_telephone_number LIKE binary CONCAT('%', #{searchText},'%') or
+            r.f_create_time LIKE binary CONCAT('%', #{searchText},'%') or
+            r.f_update_time LIKE binary CONCAT('%', #{searchText},'%') or
+            b.f_device_name LIKE binary CONCAT('%', #{searchText},'%')
+            )
+        </if>
+        GROUP BY r.f_id
+        <if test="sortName!=null and sortOrder!=null">
+            ORDER BY r.${sortName} ${sortOrder}
+        </if>
+    </select>
+</mapper>

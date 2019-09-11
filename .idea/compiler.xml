@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="broadcast-sms" />
+        <module name="broadcast-dispatch-api" />
+        <module name="broadcast-dispatch-provider" />
+        <module name="broadcast-receive-provider" />
+        <module name="broadcast-web" />
+        <module name="broadcast-common" />
+        <module name="broadcast-receive-api" />
+        <module name="broadcast-dispatch-web" />
+        <module name="broadcast-base-provider" />
+        <module name="broadcast-base-api" />
+        <module name="broadcast-receive-web" />
+        <module name="broadcast-make-api" />
+        <module name="broadcast-make-provider" />
+        <module name="broadcast-provincial-web" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="broadcast-base-api" target="1.8" />
+      <module name="broadcast-base-provider" target="1.8" />
+      <module name="broadcast-common" target="1.8" />
+      <module name="broadcast-dispatch-api" target="1.8" />
+      <module name="broadcast-dispatch-provider" target="1.8" />
+      <module name="broadcast-dispatch-web" target="1.8" />
+      <module name="broadcast-make-api" target="1.8" />
+      <module name="broadcast-make-provider" target="1.8" />
+      <module name="broadcast-provincial-web" target="1.8" />
+      <module name="broadcast-receive-api" target="1.8" />
+      <module name="broadcast-receive-provider" target="1.8" />
+      <module name="broadcast-receive-web" target="1.8" />
+      <module name="broadcast-sms" target="1.8" />
+      <module name="broadcast-web" target="1.8" />
+      <module name="broadcast-web-parent" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+</project>

@@ -1,0 +1,727 @@
+package cn.wtu.broadcast.openapi.thread;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Iterator;
+import java.util.List;
+import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import cn.wtu.broadcast.openapi.dao.BDeviceInfoMapper;
+import cn.wtu.broadcast.openapi.util.UDPUtil;
+import cn.wtu.broadcast.parent.vo.IpPictureVO;
+import cn.wtu.broadcast.parent.vo.IpTextVO;
+import cn.wtu.broadcast.parent.vo.IpVO;
+import cn.wtu.broadcast.parent.vo.IpVideoVO;
+import cn.wtu.broadcast.parent.vo.IpWriteVO;
+
+/**
+ * IP指令播发和停播的子线程
+ * 
+ * @author Lenovo
+ *
+ */
+@SuppressWarnings("unused")
+public class DeviceControlThread implements Runnable {
+
+	public static Logger logger = LoggerFactory.getLogger(DeviceControlThread.class);
+
+	/**
+	 * 
+	 * 心跳应答处理数据
+	 */
+	private String answer;
+
+	/**
+	 * 主线程传过来 每个设备的连接
+	 */
+	private Socket accept;
+
+	/**
+	 * 顺序码(16进制数，协议里面要是四位)
+	 */
+	private static int orderId = 1;
+	/**
+	 * 会话标志
+	 */
+	private static int talkTagTo = 1;
+
+	/**
+	 * 子线程中保存记录 记录设备播放了的广播ID，用于判读结束再次播发 （key值为设备资源ID，value值为已经播发了的广播封装数据）
+	 */
+	private static ConcurrentHashMap<String, List<IpVO>> sendedMap = new ConcurrentHashMap<String, List<IpVO>>();
+
+	/**
+	 * 页面设置设置设备参数后的封装 （key值为设备资源ID，value值为界面设置的各种参数）
+	 */
+	public static ConcurrentHashMap<String, List<IpWriteVO>> ipWriteVOMap = new ConcurrentHashMap<String, List<IpWriteVO>>();
+	@Autowired
+	private BDeviceInfoMapper bDeviceInfoMapper;
+
+	public DeviceControlThread(String answer, Socket accept) {
+		this.answer = answer;
+		this.accept = accept;
+	}
+
+	@Override
+	public void run() {
+		while (true) {
+			try {
+				if (accept != null && !accept.isClosed()) {
+					// 设备资源编码
+					String resourceCode = answer.substring(24, 42);
+					// 如果改设备有页面设置的发送IP设置指令时候执行
+					deviceWriteControl(resourceCode);
+					// 播放处理加入
+					sendIPControl(resourceCode);
+					// 停播处理
+					stopIPControl(resourceCode);
+				} else {
+					logger.error("当前线程的Socket已经正常关闭，结束IP指令播发和停播的子线程");
+					break;
+				}
+			} catch (Exception e) {
+				logger.error(e.getMessage() + e);
+			}
+		}
+	}
+
+	/**
+	 * 停播处理
+	 * 
+	 * @param resourceCode
+	 */
+	private void stopIPControl(String resourceCode) {
+		List<IpVO> ipVOList = sendedMap.get(resourceCode);
+		// 获取该设备已经播放了的广播指令
+		if (ipVOList != null && ipVOList.size() > 0) {
+			Iterator<IpVO> iterator = ipVOList.iterator();
+			synchronized (iterator) {
+				while (iterator.hasNext()) {
+					IpVO ipVO = iterator.next();
+					// 只有列表中不包含广播ID的时候，才发送指令
+					boolean isContains = false;
+					Iterator<IpVO> waitSendListIterator = SendIPThread.waitSendList.iterator();
+					while (waitSendListIterator.hasNext()) {
+						IpVO ipVOIterator = waitSendListIterator.next();
+						// 如果播放列表中对应广播数据已经没有了，证明已经播放完成了，开始执行停播指令
+						if (ipVOIterator.getfId().equals(ipVO.getfId())) {
+							isContains = true;
+							break;
+						}
+					}
+					// 如果播放列表中对应广播数据已经没有了，证明已经播放完成了，开始执行停播指令
+					if (!isContains) {
+						if(ipVO.getPlayType() == null){
+							stopIPControl(answer, ipVO);
+						} else if (ipVO.getPlayType() == 0) {
+							stopIPControl(answer, ipVO);
+							// TODO 字幕发送指令
+						} else if (ipVO.getPlayType() == 1) {
+							stopIPControl(answer, ipVO);
+							// TODO 图片发送指令
+						} else if (ipVO.getPlayType() == 2) {
+							stopIPControl(answer, ipVO);
+						}
+						iterator.remove();
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * 发送广播指令
+	 */
+	private void sendIPControl(String resourceCode) {
+		if (SendIPThread.waitSendList != null && SendIPThread.waitSendList.size() > 0) {
+			for (IpVO ipvo : SendIPThread.waitSendList) {
+				List<IpVO> list = sendedMap.get(resourceCode);
+				if (list == null) {
+					list = new ArrayList<IpVO>();
+				}
+
+				// 只有列表中不包含广播ID的时候，才发送指令
+				boolean isContains = false;
+				Iterator<IpVO> iterator = list.iterator();
+				while (iterator.hasNext()) {
+					IpVO ipVOIterator = iterator.next();
+					if (ipVOIterator.getfId().equals(ipvo.getfId())) {
+						isContains = true;
+						break;
+					}
+				}
+				if (!isContains) {
+					if (isCanSend(resourceCode, ipvo.getResourceCodeList())) {
+						if(ipvo.getPlayType() == null){
+							logger.info("开始发送IP播发指令，广播ID为{}", ipvo.getfId());
+							logger.info("发送广播指令接受answer:{}, 广播ID为{}", answer, ipvo.getfId());
+							sendIPControl(answer, ipvo,3);
+						} else if (ipvo.getPlayType() == 0) {
+							// 字幕发送指令
+							//textPlay(ipvo.getIpTextVO());
+							sendIPControl(answer, ipvo,0);
+						} else if (ipvo.getPlayType() == 1) {
+							// 图片发送指令
+							//picturePlay(ipvo.getIpPictureVO());
+							sendIPControl(answer, ipvo,1);
+						} else if (ipvo.getPlayType() == 2) {
+							// 视频发送指令
+							sendIPControl(answer, ipvo,2);
+						}
+						// 发送指令完成后将广播ID对应到该设备资源的集合中，用于结束第二次的多次发送问题
+						list.add(ipvo);
+						sendedMap.put(resourceCode, list);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * 如果改设备有页面设置的发送IP设置指令时候执行
+	 * 
+	 * @param resourceCode
+	 */
+	private void deviceWriteControl(String resourceCode) {
+		List<IpWriteVO> ipWriteVOList = ipWriteVOMap.get(resourceCode);
+		if (ipWriteVOList != null && ipWriteVOList.size() > 0) {
+			Iterator<IpWriteVO> iterator = ipWriteVOList.iterator();
+			synchronized (iterator) {
+				while (iterator.hasNext()) {
+					IpWriteVO ipWriteVO = iterator.next();
+					// 封装你的IP设置指令同时发送到设备
+					// head部分
+					// "01"请求
+					String askOrAnswer = "01";
+					// 会话标记
+					String talkTag = getSendTalkTag();
+					// 获取签名标志
+					String isSign = "01";
+					// 协议类型 例如0200
+					String protocol = answer.substring(4, 8);// "0200";
+					// 缺少数据包长度,后面会加上
+					String head = "fefd" + protocol + talkTag + askOrAnswer + isSign;
+
+					// body部分
+					String platForm = ipWriteVO.getPlatFormSourceCode(); // 平台编码
+					String objCounts = "0001";
+					String objCode = ipWriteVO.getDeviceSourceCode(); // 设备资源码
+
+					String serviceType = "11"; // 12 终端参数配置
+
+					String serviceDataLen = "";
+
+					// 业务数据
+					StringBuilder sb = new StringBuilder();
+					// 要查询的参数个数
+					int paramCounts = 0;
+					// 标志是否修改了资源编码
+					boolean flag = false;
+					if (true) {
+						// sb.append("01");
+						paramCounts++;
+						sb.append("0004"); // 参数编码
+					}
+					if (true) {
+						// sb.append("01");
+						paramCounts++;
+						sb.append("0104"); //
+					}
+					if (true) {
+						// sb.append("01");
+						paramCounts++;
+						sb.append("0204"); //
+					}
+					if (true) {
+						// sb.append("01");
+						paramCounts++;
+						sb.append("0304"); //
+					}
+					if (true) {
+						// sb.append("01");
+						paramCounts++;
+						sb.append("0404"); //
+					}
+					if (true) {
+						// sb.append("01");
+						paramCounts++;
+						sb.append("0504"); //
+					}
+					if (true) {
+						// sb.append("01");
+						paramCounts++;
+						sb.append("0604"); //
+					}
+					// sb.append("061245120000000301");
+					sb.insert(0, addZeroForNum("" + paramCounts, 2));
+					serviceDataLen = addZeroForNum(Integer.toHexString(sb.length() / 2), 4);
+					String body = platForm + objCounts + objCode + serviceType + serviceDataLen + sb.toString();
+
+					String totalLen = addZeroForNum(
+							Integer.toHexString(head.length() / 2 + body.length() / 2 + 12 + 64 + 6), 4);
+					StringBuilder allData = new StringBuilder(head);
+					// UTC时间
+					String tail = SendIPThread.tail(head, body.toString(), true, ipWriteVO.getPrivateKey());
+					allData.append(totalLen).append(body).append(tail);
+					// 给客户端发送消息
+					try {
+						OutputStream outputStream = accept.getOutputStream();
+						outputStream.write(UDPUtil.hexToByte(allData.toString()));
+						logger.info("参数查询指令发送成功:" + allData.toString());
+						iterator.remove();						
+					} catch (IOException e) {
+						logger.error(e.getMessage() + e);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * 字符串补0操作
+	 * 
+	 * @param str
+	 * @param strLength
+	 * @return
+	 */
+	private static String addZeroForNum(String str, int strLength) {
+		int strLen = str.length();
+		if (strLen < strLength) {
+			while (strLen < strLength) {
+				StringBuffer sb = new StringBuffer();
+				sb.append("0").append(str);// 左补0
+				str = sb.toString();
+				strLen = str.length();
+			}
+		}
+
+		return str;
+	}
+
+	/**
+	 * 判断该设备是否是播放区域内的(播放区域去掉尾部0，然后和设备资源编码匹配)
+	 * 
+	 * @param resourceCode 设备资源编码
+	 * @param resourceCodeList 播发区域
+	 * @return
+	 */
+	private boolean isCanSend(String resourceCode, List<String> resourceCodeList) {
+		if (resourceCodeList != null && resourceCodeList.size() > 0) {
+			for (String code : resourceCodeList) {
+				try {
+					// 删除字符串尾部的0
+					String newCode = removeTailZero(code);
+					String newResourceCode = resourceCode.substring(0, newCode.length());
+					if (newCode.equals(newResourceCode)) {
+						return true;
+					}
+				} catch (Exception e) {
+					logger.error(e.getMessage() + e);
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * 删除字符串尾部的0
+	 * 
+	 * @param str
+	 * @return
+	 */
+	private static String removeTailZero(String str) {
+		// 如果字符串尾部不为0，返回字符串
+		if (!str.substring(str.length() - 1).equals("0")) {
+			return str;
+		} else {
+			// 否则将字符串尾部删除一位再进行递归
+			return removeTailZero(str.substring(0, str.length() - 1));
+		}
+	}
+
+	/**
+	 * 主动发送IP播放指令
+	 * 
+	 * @param answer
+	 * @param playType 0文字 1图片 2视频 3音频广播
+	 */
+	private void sendIPControl(String answer, IpVO ipvo,Integer playType) {
+		// 业务数据类型
+		String serviceType = "01";
+		// 发送开播指令
+		String head = getSendHead(answer);
+		String sendData = "";
+		if(playType == 3){
+			//ipvo.setOrderId(String.valueOf(orderId++));
+			 sendData = play(ipvo);
+		}else if(playType == 2){
+			 sendData = videoPlay(ipvo.getIpVideoVO());
+		}else if(playType == 1){
+			sendData = picturePlay(ipvo.getIpPictureVO());
+		}else if(playType == 0){
+			sendData = textPlay(ipvo.getIpTextVO());
+		}
+		StringBuilder playBody = new StringBuilder();
+		// body头部+业务数据长度+业务数据
+		playBody.append(SendIPThread.getBody(ipvo.getPlatformResourceCode(), ipvo.getResourceCodeList(), serviceType)
+				+ SendIPThread.getRealLenth(Integer.toHexString(sendData.length() / 2)) + sendData);
+		// 12 + 64 + 6 代表尾部的固定长度
+		String totalSize = SendIPThread
+				.getRealLenth(Integer.toHexString(head.length() / 2 + playBody.length() / 2 + 12 + 64 + 6));
+		String tail = SendIPThread.tail(head, playBody.toString(), true, ipvo.getPrivateKey(), ipvo.getTimeZoneSet());
+		StringBuilder ipPlayData = new StringBuilder(head);
+		ipPlayData.append(totalSize).append(playBody).append(tail);
+		// 给客户端发送消息
+		try {
+			OutputStream outputStream = accept.getOutputStream();
+			outputStream.write(UDPUtil.hexToByte(ipPlayData.toString()));
+			logger.info("开播指令发送成功:" + ipPlayData.toString());
+		} catch (IOException e) {
+			logger.error(e.getMessage() + e);
+		}
+	}
+
+	/**
+	 * 播发数据封装
+	 * 
+	 * @param fId 广播消息编码
+	 * @param broadCastType 广播类型(应急，日常，演练...)
+	 * @param level 事件级别（重大，特别重大...）
+	 * @param audioUrl 音频url
+	 * @return
+	 */
+	private static String play(IpVO ipvo) {
+		Calendar now = Calendar.getInstance();
+		String year = "" + now.get(Calendar.YEAR);
+		String month = "" + (now.get(Calendar.MONTH) + 1);
+		String day = "" + now.get(Calendar.DAY_OF_MONTH);
+		if (month.length() < 2) {
+			month = "0" + month;
+		}
+		if (day.length() < 2) {
+			day = "0" + day;
+		}
+
+		StringBuilder playData = new StringBuilder();
+		playData.append(ipvo.getPlatformResourceCode()).append(year + month + day);
+		//playData.append(SendIPThread.addZeroForNum(String.valueOf(orderId++), 4)); // 补齐4位顺序码
+		//ipvo.setOrderId(String.valueOf(orderId++));
+		playData.append(SendIPThread.addZeroForNum(ipvo.getfId(), 4)); // 补齐4位顺序码
+		
+		playData.append(ipvo.getBroadCastType());
+		playData.append(ipvo.getEventLevel());
+		playData.append(ipvo.getEventType());
+
+		// 将音量如60 转换成16进制 3c
+		String volume = intToHex(ipvo.getVolume().intValue());
+		playData.append(SendIPThread.addZeroForNum(volume, 2));
+		Calendar cal = Calendar.getInstance();
+		if (Integer.parseInt(ipvo.getTimeZoneSet()) == 0) {
+			// 获得时区和 GMT-0 的时间差,偏移量
+			int offset = cal.get(Calendar.ZONE_OFFSET);
+			// 获得夏令时 时差
+			int dstoff = cal.get(Calendar.DST_OFFSET);
+			cal.add(Calendar.MILLISECOND, (offset + dstoff));
+		} else if (Integer.parseInt(ipvo.getTimeZoneSet()) == 1) {
+			cal.setTimeZone(TimeZone.getDefault());
+		}
+		String startTime = Integer.toHexString((int) (cal.getTime().getTime() / 1000));
+		String endTime = Integer.toHexString((int) ((cal.getTime().getTime() / 1000) + 360)); // 默认取开始时间6分钟后结束，以后可再商议
+		playData.append(startTime);
+		playData.append(endTime);
+		playData.append(ipvo.getCount());
+		// 辅助数据类型 01文本 02音频 03图片 04视频
+		playData.append(ipvo.getType());
+		playData.append(ipvo.getLen());
+		// http音频
+		playData.append(ipvo.getProtocolType()).append(ipvo.getAudioCodeType()).append(ipvo.getAudioPid());
+		//rtsp
+		//playData.append(ipvo.getProtocolType2()).append(ipvo.getAudioCodeType()).append("0000");
+		playData.append(ipvo.getReserveInfo()).append(UDPUtil.stringToAscii(ipvo.getAudioURL()));
+		return playData.toString();
+	}
+
+	/**
+	 * 视频广告播发数据封装
+	 * 
+	 * @param fId 广播消息编码
+	 * @param broadCastType 广播类型(应急，日常，演练...)
+	 * @param level 事件级别（重大，特别重大...）
+	 * @param audioUrl 音频url
+	 * @return
+	 */
+	private static String videoPlay(IpVideoVO ipVideoVO) {
+		Calendar now = Calendar.getInstance();
+		String year = "" + now.get(Calendar.YEAR);
+		String month = "" + (now.get(Calendar.MONTH) + 1);
+		String day = "" + now.get(Calendar.DAY_OF_MONTH);
+		if (month.length() < 2) {
+			month = "0" + month;
+		}
+		if (day.length() < 2) {
+			day = "0" + day;
+		}
+
+		StringBuilder playData = new StringBuilder();
+		playData.append(ipVideoVO.getPlatformResourceCode()).append(year + month + day);
+		playData.append(SendIPThread.addZeroForNum(ipVideoVO.getfId(), 4)); // 补齐4位顺序码
+		playData.append(ipVideoVO.getBroadCastType());
+		playData.append(ipVideoVO.getEventLevel());
+		playData.append(ipVideoVO.getEventType());
+
+		// 将音量如60 转换成16进制 3c
+		String volume = intToHex(ipVideoVO.getVolume().intValue());
+		playData.append(SendIPThread.addZeroForNum(volume, 2));
+
+		Calendar cal = Calendar.getInstance();
+		if (Integer.parseInt(ipVideoVO.getTimeZoneSet()) == 0) {
+			// 获得时区和 GMT-0 的时间差,偏移量
+			int offset = cal.get(Calendar.ZONE_OFFSET);
+			// 获得夏令时 时差
+			int dstoff = cal.get(Calendar.DST_OFFSET);
+			cal.add(Calendar.MILLISECOND, (offset + dstoff));
+		} else if (Integer.parseInt(ipVideoVO.getTimeZoneSet()) == 1) {
+			cal.setTimeZone(TimeZone.getDefault());
+		}
+		String startTime = Integer.toHexString((int) (cal.getTime().getTime() / 1000));
+		String endTime = Integer.toHexString((int) ((cal.getTime().getTime() / 1000) + 360)); // 默认取开始时间6分钟后结束，以后可再商议
+		playData.append(startTime);
+		playData.append(endTime);
+		playData.append(ipVideoVO.getCount());
+		// 辅助数据类型 01文本 02音频 03图片 04视频
+		playData.append(ipVideoVO.getType());
+		playData.append(ipVideoVO.getLen());
+		// 音频
+		playData.append(ipVideoVO.getProtocolType()).append(ipVideoVO.getAudioCodeType())
+				.append(ipVideoVO.getAudioPid());
+		// 视频
+		playData.append(ipVideoVO.getReserveInfo()).append(UDPUtil.stringToAscii(ipVideoVO.getAudioURL()));
+		return playData.toString();
+	}
+
+	/**
+	 * 图片广告播发数据封装
+	 * 
+	 * @param fId 广播消息编码
+	 * @param broadCastType 广播类型(应急，日常，演练...)
+	 * @param level 事件级别（重大，特别重大...）
+	 * @param audioUrl 音频url
+	 * @return
+	 */
+	private static String picturePlay(IpPictureVO ipPictureVO) {
+		Calendar now = Calendar.getInstance();
+		String year = "" + now.get(Calendar.YEAR);
+		String month = "" + (now.get(Calendar.MONTH) + 1);
+		String day = "" + now.get(Calendar.DAY_OF_MONTH);
+		if (month.length() < 2) {
+			month = "0" + month;
+		}
+		if (day.length() < 2) {
+			day = "0" + day;
+		}
+
+		StringBuilder playData = new StringBuilder();
+		playData.append(ipPictureVO.getPlatformResourceCode()).append(year + month + day);
+		playData.append(SendIPThread.addZeroForNum(ipPictureVO.getfId(), 4)); // 补齐4位顺序码
+		playData.append(ipPictureVO.getBroadCastType());
+		playData.append(ipPictureVO.getEventLevel());
+		playData.append(ipPictureVO.getEventType());
+
+		// 将音量如60 转换成16进制 3c
+		String volume = intToHex(ipPictureVO.getVolume().intValue());
+		playData.append(SendIPThread.addZeroForNum(volume, 2));
+
+		Calendar cal = Calendar.getInstance();
+		if (Integer.parseInt(ipPictureVO.getTimeZoneSet()) == 0) {
+			// 获得时区和 GMT-0 的时间差,偏移量
+			int offset = cal.get(Calendar.ZONE_OFFSET);
+			// 获得夏令时 时差
+			int dstoff = cal.get(Calendar.DST_OFFSET);
+			cal.add(Calendar.MILLISECOND, (offset + dstoff));
+		} else if (Integer.parseInt(ipPictureVO.getTimeZoneSet()) == 1) {
+			cal.setTimeZone(TimeZone.getDefault());
+		}
+		String startTime = Integer.toHexString((int) (cal.getTime().getTime() / 1000));
+		String endTime = Integer.toHexString((int) ((cal.getTime().getTime() / 1000) + 360)); // 默认取开始时间6分钟后结束，以后可再商议
+		playData.append(startTime);
+		playData.append(endTime);
+		playData.append(ipPictureVO.getCount());
+		// 辅助数据类型 01文本 02音频 03图片 04视频
+		playData.append(ipPictureVO.getType());
+		playData.append(ipPictureVO.getLen());
+		playData.append(UDPUtil.stringToAscii(ipPictureVO.getPictureURL()));
+		return playData.toString();
+	}
+
+	/**
+	 * 文字广告播发数据封装
+	 * 
+	 * @param fId 广播消息编码
+	 * @param broadCastType 广播类型(应急，日常，演练...)
+	 * @param level 事件级别（重大，特别重大...）
+	 * @param audioUrl 音频url
+	 * @return
+	 */
+	private static String textPlay(IpTextVO ipTextVO) {
+		Calendar now = Calendar.getInstance();
+		String year = "" + now.get(Calendar.YEAR);
+		String month = "" + (now.get(Calendar.MONTH) + 1);
+		String day = "" + now.get(Calendar.DAY_OF_MONTH);
+		if (month.length() < 2) {
+			month = "0" + month;
+		}
+		if (day.length() < 2) {
+			day = "0" + day;
+		}
+
+		StringBuilder playData = new StringBuilder();
+		playData.append(ipTextVO.getPlatformResourceCode()).append(year + month + day);
+		///playData.append(SendIPThread.addZeroForNum(String.valueOf(orderId++), 4)); // 补齐4位顺序码
+		playData.append(SendIPThread.addZeroForNum(ipTextVO.getfId(), 4)); // 补齐4位顺序码
+		playData.append(ipTextVO.getBroadCastType());
+		playData.append(ipTextVO.getEventLevel());
+		playData.append(ipTextVO.getEventType());
+
+		// 将音量如60 转换成16进制 3c
+		String volume = intToHex(ipTextVO.getVolume().intValue());
+		playData.append(SendIPThread.addZeroForNum(volume, 2));
+
+		Calendar cal = Calendar.getInstance();
+		if (Integer.parseInt(ipTextVO.getTimeZoneSet()) == 0) {
+			// 获得时区和 GMT-0 的时间差,偏移量
+			int offset = cal.get(Calendar.ZONE_OFFSET);
+			// 获得夏令时 时差
+			int dstoff = cal.get(Calendar.DST_OFFSET);
+			cal.add(Calendar.MILLISECOND, (offset + dstoff));
+		} else if (Integer.parseInt(ipTextVO.getTimeZoneSet()) == 1) {
+			cal.setTimeZone(TimeZone.getDefault());
+		}
+		String startTime = Integer.toHexString((int) (cal.getTime().getTime() / 1000));
+		String endTime = Integer.toHexString((int) ((cal.getTime().getTime() / 1000) + 360)); // 默认取开始时间6分钟后结束，以后可再商议
+		playData.append(startTime);
+		playData.append(endTime);
+		playData.append(ipTextVO.getCount());
+		// 辅助数据类型 01文本 02音频 03图片 04视频
+		playData.append(ipTextVO.getType());
+		playData.append(ipTextVO.getLen());
+		// utf-8转GB2312
+		playData.append(UDPUtil.stringToAscii(ipTextVO.getText()));
+		return playData.toString();
+	}
+
+	/**
+	 * 发送停播指令
+	 * 
+	 * @param answer
+	 * @param ipvo
+	 */
+	private void stopIPControl(String answer, IpVO ipvo) {
+		// 业务数据类型
+		String serviceType = "02";
+		// 发送停播指令
+		String head = getSendHead(answer);
+		String sendData = stopPlay(ipvo);
+		StringBuilder playBody = new StringBuilder();
+		// body头部+业务数据长度+业务数据
+		playBody.append(SendIPThread.getBody(ipvo.getPlatformResourceCode(), ipvo.getResourceCodeList(), serviceType)
+				+ SendIPThread.getRealLenth(Integer.toHexString(sendData.length() / 2)) + sendData);
+		// 12 + 64 + 6 代表尾部的固定长度
+		String totalSize = SendIPThread
+				.getRealLenth(Integer.toHexString(head.length() / 2 + playBody.length() / 2 + 12 + 64 + 6));
+		String tail = SendIPThread.tail(head, playBody.toString(), true, ipvo.getPrivateKey(), ipvo.getTimeZoneSet());
+		StringBuilder ipStopPlayData = new StringBuilder(head);
+		ipStopPlayData.append(totalSize).append(playBody).append(tail);
+		// 给客户端发送消息
+		try {
+			OutputStream outputStream = accept.getOutputStream();
+			outputStream.write(UDPUtil.hexToByte(ipStopPlayData.toString()));
+			logger.info("停播指令发送成功:" + ipStopPlayData.toString());
+		} catch (IOException e) {
+			logger.error(e.getMessage() + e);
+		}
+
+	}
+
+	/**
+	 * 封装停播指令
+	 * 
+	 * @param ipvo
+	 * @return
+	 */
+	private String stopPlay(IpVO ipvo) {
+		Calendar now = Calendar.getInstance();
+		String year = "" + now.get(Calendar.YEAR);
+		String month = "" + (now.get(Calendar.MONTH) + 1);
+		String day = "" + now.get(Calendar.DAY_OF_MONTH);
+		if (month.length() < 2) {
+			month = "0" + month;
+		}
+		if (day.length() < 2) {
+			day = "0" + day;
+		}
+
+		StringBuilder playData = new StringBuilder();
+		playData.append(ipvo.getPlatformResourceCode()).append(year + month + day);
+		playData.append(SendIPThread.addZeroForNum(ipvo.getfId(), 4));
+		//playData.append(SendIPThread.addZeroForNum(ipvo.getOrderId(), 4));
+		return playData.toString();
+	}
+
+	private static String getSendHead(String answer) {
+		// "01"发送开播指令
+		String askOrAnswer = "01";
+		// 会话标记
+		String talkTag = getSendTalkTag();
+		// 获取签名标志
+		String isSign = "01";
+		// 协议类型 例如0200
+		String protocol = answer.substring(4, 8);
+		// 缺少数据包长度,后面会加上
+		String head = "fefd" + protocol + talkTag + askOrAnswer + isSign;
+		return head;
+	}
+
+	/**
+	 * 获取发送IP指令的会话标记，内存中递增，重启后重置
+	 * 
+	 * @return
+	 */
+	private static String getSendTalkTag() {
+		String talkTag = new DecimalFormat("00000000").format(talkTagTo);
+		talkTagTo++;
+		return talkTag;
+	}
+
+	private static String intToHex(int n) {
+		StringBuffer s = new StringBuffer();
+		String a;
+		char[] b = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+		while (n != 0) {
+			s = s.append(b[n % 16]);
+			n = n / 16;
+		}
+		a = s.reverse().toString();
+		return a;
+	}
+
+	public static String ipToLong(String ipString) {
+		String[] ip = ipString.split("\\.");
+		StringBuffer sb = new StringBuffer();
+		for (String str : ip) {
+			sb.append(addZeroForNum(Integer.toHexString(Integer.parseInt(str)), 2));
+		}
+		return sb.toString();
+	}
+
+}

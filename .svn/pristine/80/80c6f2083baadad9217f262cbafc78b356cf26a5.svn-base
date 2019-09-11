@@ -1,0 +1,548 @@
+package cn.wtu.broadcast.controller.broadcast;
+
+import java.text.ParseException;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.github.pagehelper.PageInfo;
+
+import cn.wtu.broadcast.config.RegionData;
+import cn.wtu.broadcast.openapi.api.AdRecordService;
+import cn.wtu.broadcast.openapi.api.BPictureAdsService;
+import cn.wtu.broadcast.openapi.api.BRollingSubtitlesService;
+import cn.wtu.broadcast.openapi.api.BTeletextTerminalService;
+import cn.wtu.broadcast.openapi.api.BVideoAdsServices;
+import cn.wtu.broadcast.openapi.api.DispatchHttpclientService;
+import cn.wtu.broadcast.openapi.api.TDictionaryService;
+import cn.wtu.broadcast.openapi.model.BAdRecord;
+import cn.wtu.broadcast.openapi.model.BPictureAds;
+import cn.wtu.broadcast.openapi.model.BRollingSubtitles;
+import cn.wtu.broadcast.openapi.model.BTeletextTerminal;
+import cn.wtu.broadcast.openapi.model.BVideoAds;
+import cn.wtu.broadcast.openapi.model.TDictionary;
+import cn.wtu.broadcast.openapi.model.TUser;
+import cn.wtu.broadcast.openapi.vo.BRollingSubtitlesVO;
+import cn.wtu.broadcast.parent.constant.Constant;
+import cn.wtu.broadcast.parent.pojo.BroadcastResult;
+import cn.wtu.broadcast.parent.utils.json.JSONUtils;
+
+@Controller
+@RequestMapping("broadcast/graphicRelease")
+public class GraphicReleaseController {
+
+	@Autowired
+	private BRollingSubtitlesService bRollingSubtitlesService;
+
+	@Autowired
+	private BTeletextTerminalService bTeletextTerminalService;
+
+	@Autowired
+	private BPictureAdsService bPictureAdsService;
+
+	@Autowired
+	private BVideoAdsServices bVideoAdsServices;
+
+	@Autowired
+	private TDictionaryService tDictionaryService;
+
+	@Autowired
+	private DispatchHttpclientService dispatchHttpclientService;
+
+	@Autowired
+	private AdRecordService adRecordService;
+
+	@Value("${dispatch.server.tomcat.port}")
+	private String dispatchServerTomcatPort;
+
+	@GetMapping
+	public String ui(Model model) {
+		model.addAttribute("regionList", JSONUtils.toString(RegionData.getUserZTreeList()));
+		return "broadcast/graphicRelease";
+	}
+
+	/**
+	 * 添加字幕
+	 * 
+	 * @param bRollingSubtitles
+	 * @throws ParseException
+	 */
+	@RequestMapping("/addZimu")
+	@ResponseBody
+	public BroadcastResult addZimu(@ModelAttribute BRollingSubtitles bRollingSubtitles,
+			/*
+			 * @RequestParam(value="fStartDateAndEndTime")String
+			 * fStartDateAndEndTime,
+			 * 
+			 * @RequestParam(value="fStartTimeAndEndTime")String
+			 * fStartTimeAndEndTime,
+			 */
+			@RequestParam(value = "resourceId", defaultValue = "") String resourceId) throws ParseException {
+		/*
+		 * String date[]=fStartDateAndEndTime.split("至"); String
+		 * time[]=fStartTimeAndEndTime.split("至"); SimpleDateFormat sdf_date =
+		 * new SimpleDateFormat("yyyy-MM-dd"); SimpleDateFormat sdf_time = new
+		 * SimpleDateFormat("HH:mm:ss");
+		 * bRollingSubtitles.setfStartDate(sdf_date.parse(date[0]));
+		 * bRollingSubtitles.setfEndDate(sdf_date.parse(date[1]));
+		 * bRollingSubtitles.setfStartTime(sdf_time.parse(time[0]));
+		 * bRollingSubtitles.setfEndTime(sdf_time.parse(time[1]));
+		 */
+		bRollingSubtitles.setfDevice(resourceId);
+		try {
+
+			if (bRollingSubtitlesService.addRoliing(bRollingSubtitles)) {
+				return BroadcastResult.ok();
+			} else {
+				return BroadcastResult.fail();
+			}
+		} catch (Exception e) {
+			return BroadcastResult.fail();
+		}
+
+	}
+
+	@RequestMapping("/checkZimu")
+	@ResponseBody
+	public BroadcastResult checkZimu(@RequestParam(value = "title") String title) {
+		if (bRollingSubtitlesService.checkZimu(title)) {
+			return BroadcastResult.build(400, "重复");
+		} else {
+			return BroadcastResult.build(200, "可添加");
+		}
+	}
+
+	@RequestMapping("/selectZimu/{fId}")
+	@ResponseBody
+	public BroadcastResult selectZimuListById(@PathVariable Integer fId) {
+		return BroadcastResult.ok(bRollingSubtitlesService.selectRollById(fId));
+	}
+
+	@RequestMapping("/updateZimu")
+	@ResponseBody
+	public BroadcastResult updateZimu(@ModelAttribute BRollingSubtitles bRollingSubtitles, HttpSession httpSession,
+			@RequestParam(value = "resourceId", defaultValue = "") String resourceId) throws ParseException {
+		bRollingSubtitles.setfAddress(null);
+		bRollingSubtitles.setfDevice(resourceId);
+		TUser tUser = (TUser) httpSession.getAttribute(Constant.CURRENT_USER);
+		bRollingSubtitles.setfOperatorId(tUser.getfId());
+		bRollingSubtitles.setfUpdateTime(new Date());
+		if (bRollingSubtitlesService.updateZimu(bRollingSubtitles)) {
+			return BroadcastResult.ok();
+		} else {
+			return BroadcastResult.fail();
+		}
+	}
+
+	@RequestMapping("/deleteZimu")
+	@ResponseBody
+	public BroadcastResult deleteZimu(@RequestParam(value = "fId") String fId) throws Exception {
+		return BroadcastResult.build(200, "删除了" + bRollingSubtitlesService.deleteZimu(fId) + "条字幕");
+	}
+
+	@RequestMapping("/selectZimu")
+	@ResponseBody
+	public BroadcastResult selectZimuList(@RequestParam(defaultValue = "1", required = false) Integer pageNumber,
+			@RequestParam(defaultValue = "10", required = false) Integer pageSize,
+			@RequestParam(defaultValue = "", required = false) String searchText,
+			@RequestParam(defaultValue = "desc", required = false) String sortOrder,
+			@RequestParam(defaultValue = "fCreateTime", required = false) String sortName) throws Exception {
+		Map<String, Object> paramMap = new HashMap<>(4);
+		paramMap.put("pageNumber", pageNumber);
+		paramMap.put("pageSize", pageSize);
+		paramMap.put("searchText", searchText);
+		paramMap.put("sortOrder", sortOrder);
+		if (sortName.equals("fCreateTime")) {
+			paramMap.put("sortName", "f_create_time");
+		} else if (sortName.equals("fStartDate")) {
+			paramMap.put("sortName", "f_start_date");
+		} else if (sortName.equals("fEndDate")) {
+			paramMap.put("sortName", "f_end_date");
+		} else if (sortName.equals("fStartTime")) {
+			paramMap.put("sortName", "f_start_time");
+		} else if (sortName.equals("fEndTime")) {
+			paramMap.put("sortName", "f_end_time");
+		}
+		PageInfo<BRollingSubtitlesVO> pi = bRollingSubtitlesService.queryPage(paramMap);
+		BroadcastResult br = BroadcastResult.ok(pi);
+		return br;
+	}
+
+	@RequestMapping("/selectPicture")
+	@ResponseBody
+	public BroadcastResult selectPicture(@RequestParam(defaultValue = "1", required = false) Integer pageNumber,
+			@RequestParam(defaultValue = "10", required = false) Integer pageSize,
+			@RequestParam(defaultValue = "", required = false) String searchText,
+			@RequestParam(defaultValue = "desc", required = false) String sortOrder,
+			@RequestParam(defaultValue = "fCreateTime", required = false) String sortName) throws Exception {
+		Map<String, Object> paramMap = new HashMap<>(4);
+		paramMap.put("pageNumber", pageNumber);
+		paramMap.put("pageSize", pageSize);
+		paramMap.put("searchText", searchText);
+		paramMap.put("sortOrder", sortOrder);
+		if (sortName.equals("fCreateTime")) {
+			paramMap.put("sortName", "f_create_time");
+		} else if (sortName.equals("fSendStartDate")) {
+			paramMap.put("sortName", "f_send_start_date");
+		} else if (sortName.equals("fSendEndDate")) {
+			paramMap.put("sortName", "f_send_end_date");
+		} else if (sortName.equals("fSendStartTime")) {
+			paramMap.put("sortName", "f_send_start_time");
+		} else if (sortName.equals("fSendEndTime")) {
+			paramMap.put("sortName", "f_send_end_time");
+		}
+		return BroadcastResult.ok(bPictureAdsService.queryPage(paramMap));
+	}
+
+	@RequestMapping("/checkPicture")
+	@ResponseBody
+	public BroadcastResult checkPictire(@RequestParam(value = "title") String title) {
+		if (bPictureAdsService.checkPicture(title)) {
+			return BroadcastResult.build(400, "重复");
+		} else {
+			return BroadcastResult.build(200, "可添加");
+		}
+	}
+
+	@RequestMapping("/selectPicture/{fId}")
+	@ResponseBody
+	public BroadcastResult selectPictureById(@PathVariable Integer fId) {
+		return BroadcastResult.ok(bPictureAdsService.selectPictureById(fId));
+	}
+
+	@RequestMapping("/selectVideo/{fId}")
+	@ResponseBody
+	public BroadcastResult selectVideoById(@PathVariable Integer fId) {
+		return BroadcastResult.ok(bVideoAdsServices.selectVideoById(fId));
+	}
+
+	@RequestMapping("/addPicture")
+	@ResponseBody
+	public BroadcastResult addPicture(HttpServletRequest request, @ModelAttribute BPictureAds bPictureAds,
+			/*
+			 * @RequestParam(value="fStartDateAndEndTime")String
+			 * fStartDateAndEndTime,
+			 * 
+			 * @RequestParam(value="fStartTimeAndEndTime")String
+			 * fStartTimeAndEndTime,
+			 */
+			@RequestParam(value = "resourceId", defaultValue = "1") String resourceId) throws ParseException {
+		/*
+		 * SimpleDateFormat sdf_date = new SimpleDateFormat("yyyy-MM-dd");
+		 * SimpleDateFormat sdf_time = new SimpleDateFormat("HH:mm:ss"); String
+		 * date[]=fStartDateAndEndTime.split("至"); String
+		 * time[]=fStartTimeAndEndTime.split("至");
+		 * bPictureAds.setfSendStartDate(sdf_date.parse(date[0]));
+		 * bPictureAds.setfSendEndDate(sdf_date.parse(date[1]));
+		 * bPictureAds.setfSendStartTime(sdf_time.parse(time[0]));
+		 * bPictureAds.setfSendEndTime(sdf_time.parse(time[1]));
+		 */
+		bPictureAds.setfDevice(resourceId);
+		try {
+			if (bPictureAdsService.addPicture(bPictureAds)) {
+				return BroadcastResult.ok();
+			} else {
+				return BroadcastResult.fail();
+			}
+		} catch (Exception e) {
+			return BroadcastResult.fail();
+		}
+	}
+
+	@RequestMapping("/updatePicture")
+	@ResponseBody
+	public BroadcastResult updatePicture(@ModelAttribute BPictureAds bPictureAds, HttpSession httpSession,
+			@RequestParam(value = "resourceId", defaultValue = "") String resourceId) throws ParseException {
+		bPictureAds.setfUpdateTime(new Date());
+		bPictureAds.setfDevice(resourceId);
+		TUser tUser = (TUser) httpSession.getAttribute(Constant.CURRENT_USER);
+		bPictureAds.setfOperatorId(tUser.getfId());
+		bPictureAds.setfAddress(null);
+		try {
+			if (bPictureAdsService.updatePicture(bPictureAds)) {
+				return BroadcastResult.ok();
+			} else {
+				return BroadcastResult.fail();
+			}
+		} catch (Exception e) {
+			return BroadcastResult.fail();
+		}
+	}
+
+	@RequestMapping("/deletePicture")
+	@ResponseBody
+	public BroadcastResult deletePicture(@RequestParam(value = "fId") String fId) throws Exception {
+		return BroadcastResult.build(200, "删除了" + bPictureAdsService.deletePicture(fId) + "条字幕");
+	}
+
+	@RequestMapping("/checkVideo")
+	@ResponseBody
+	public BroadcastResult checkVideo(@RequestParam(value = "title") String title) {
+		if (bVideoAdsServices.checkVideo(title)) {
+			return BroadcastResult.build(400, "重复");
+		} else {
+			return BroadcastResult.build(200, "可添加");
+		}
+	}
+
+	@RequestMapping("/addvideo")
+	@ResponseBody
+	public BroadcastResult addvideo(@ModelAttribute BVideoAds bVideoAds,
+			/*
+			 * @RequestParam(value="fStartDateAndEndTime")String
+			 * fStartDateAndEndTime,
+			 * 
+			 * @RequestParam(value="fStartTimeAndEndTime")String
+			 * fStartTimeAndEndTime,
+			 */
+			@RequestParam(value = "resourceId", defaultValue = "1") String resourceId) throws ParseException {
+		/*
+		 * SimpleDateFormat sdf_date = new SimpleDateFormat("yyyy-MM-dd");
+		 * SimpleDateFormat sdf_time = new SimpleDateFormat("HH:mm:ss"); String
+		 * date[]=fStartDateAndEndTime.split("至"); String
+		 * time[]=fStartTimeAndEndTime.split("至");
+		 * bVideoAds.setfSendStartDate(sdf_date.parse(date[0]));
+		 * bVideoAds.setfSendEndDate(sdf_date.parse(date[1]));
+		 * bVideoAds.setfSendStartTime(sdf_time.parse(time[0]));
+		 * bVideoAds.setfSendEndTime(sdf_time.parse(time[1]));
+		 */
+		bVideoAds.setfDevice(resourceId);
+		try {
+			if (bVideoAdsServices.insertVideo(bVideoAds)) {
+				return BroadcastResult.ok();
+			} else {
+				return BroadcastResult.fail();
+			}
+
+		} catch (Exception e) {
+			return BroadcastResult.fail();
+		}
+	}
+
+	@RequestMapping("/selectVideo")
+	@ResponseBody
+	public BroadcastResult selectvideo(@RequestParam(defaultValue = "1", required = false) Integer pageNumber,
+			@RequestParam(defaultValue = "10", required = false) Integer pageSize,
+			@RequestParam(defaultValue = "", required = false) String searchText,
+			@RequestParam(defaultValue = "desc", required = false) String sortOrder,
+			@RequestParam(defaultValue = "fCreateTime", required = false) String sortName) {
+		Map<String, Object> paramMap = new HashMap<>(4);
+		paramMap.put("pageNumber", pageNumber);
+		paramMap.put("pageSize", pageSize);
+		paramMap.put("searchText", searchText);
+		paramMap.put("sortOrder", sortOrder);
+		if (sortName.equals("fCreateTime")) {
+			paramMap.put("sortName", "f_create_time");
+		} else if (sortName.equals("fSendStartDate")) {
+			paramMap.put("sortName", "f_send_start_date");
+		} else if (sortName.equals("fSendEndDate")) {
+			paramMap.put("sortName", "f_send_end_date");
+		} else if (sortName.equals("fSendStartTime")) {
+			paramMap.put("sortName", "f_send_start_time");
+		} else if (sortName.equals("fSendEndTime")) {
+			paramMap.put("sortName", "f_send_end_time");
+		}
+		return BroadcastResult.ok(bVideoAdsServices.queryPageByParam(paramMap));
+	}
+
+	@RequestMapping("/updateVideo")
+	@ResponseBody
+	public BroadcastResult updateVideo(@ModelAttribute BVideoAds bVideoAds, HttpSession httpSession,
+			@RequestParam(value = "resourceId", defaultValue = "") String resourceId) throws ParseException {
+
+		bVideoAds.setfAddress(null);
+		bVideoAds.setfDevice(resourceId);
+		bVideoAds.setfUpdateTime(new Date());
+		TUser tUser = (TUser) httpSession.getAttribute(Constant.CURRENT_USER);
+		bVideoAds.setfOperatorId(tUser.getfId());
+		try {
+			bVideoAdsServices.updateVideo(bVideoAds);
+			return BroadcastResult.ok();
+
+		} catch (Exception e) {
+			return BroadcastResult.fail("failure");
+		}
+	}
+
+	@RequestMapping("/deleteVideo")
+	@ResponseBody
+	public BroadcastResult deleteById(@RequestParam(value = "fId") String fId) {
+		return BroadcastResult.build(200, "删除了" + bVideoAdsServices.deleteVideo(fId) + "视频");
+	}
+
+	@RequestMapping("/addimgTextTerminal")
+	@ResponseBody
+	public BroadcastResult addimgTextTerminal(@ModelAttribute BTeletextTerminal bTeletextTerminal,
+			@RequestParam(value = "resourceId", defaultValue = "1") String resourceId) throws ParseException {
+		bTeletextTerminal.setfBroadcastArea(resourceId);
+		if (bTeletextTerminalService.addTerminal(bTeletextTerminal)) {
+			return BroadcastResult.ok();
+		} else {
+			return BroadcastResult.fail();
+		}
+	}
+
+	@RequestMapping("/checkTextTerminal")
+	@ResponseBody
+	public BroadcastResult checkTextTerminal(@RequestParam(value = "title") String title) {
+		if (bTeletextTerminalService.checkTextTerminal(title)) {
+			return BroadcastResult.build(400, "重复");
+		} else {
+			return BroadcastResult.build(200, "可添加");
+		}
+	}
+
+	@RequestMapping("/selectimgTextTerminal")
+	@ResponseBody
+	public BroadcastResult selectimgTextTerminal(@RequestParam(defaultValue = "1", required = false) Integer pageNumber,
+			@RequestParam(defaultValue = "10", required = false) Integer pageSize,
+			@RequestParam(defaultValue = "", required = false) String searchText,
+			@RequestParam(defaultValue = "desc", required = false) String sortOrder,
+			@RequestParam(defaultValue = "fCreateTime", required = false) String sortName) {
+		Map<String, Object> paramMap = new HashMap<>(4);
+		paramMap.put("pageNumber", pageNumber);
+		paramMap.put("pageSize", pageSize);
+		paramMap.put("searchText", searchText);
+		paramMap.put("sortOrder", sortOrder);
+		if (sortName.equals("fCreateTime")) {
+			paramMap.put("sortName", "f_create_time");
+		}
+		return BroadcastResult.ok(bTeletextTerminalService.queryPageByParam(paramMap));
+	}
+
+	@RequestMapping("/selectimgTextTerminal/{fId}")
+	@ResponseBody
+	public BroadcastResult selectimgTextTerminalById(@PathVariable Integer fId) {
+		return BroadcastResult.ok(bTeletextTerminalService.selectByPrimaryKey(fId));
+	}
+
+	@RequestMapping("/updateimgTextTerminal")
+	@ResponseBody
+	public BroadcastResult updateimgTextTerminal(@ModelAttribute BTeletextTerminal bTeletextTerminal) {
+		if (bTeletextTerminalService.updateTerminal(bTeletextTerminal)) {
+			return BroadcastResult.ok();
+		} else {
+			return BroadcastResult.fail();
+		}
+	}
+
+	@RequestMapping("/deleteimgTextTerminal")
+	@ResponseBody
+	public BroadcastResult deleteimgTextTerminal(@RequestParam(value = "fId") String fId) {
+		return BroadcastResult.build(200, "删除了" + bTeletextTerminalService.deleteimgTextTerminal(fId) + "个终端");
+	}
+
+	@RequestMapping("/sensitiveWord")
+	@ResponseBody
+	public String findSensitiveWord(@RequestParam(value = "input") String input) {
+
+		List<TDictionary> list = tDictionaryService.selectList();
+		String rs = "";
+		for (TDictionary td : list) {
+
+			String fDictionaryCode = td.getfDictionaryCode();
+			String fDictionaryContent = td.getfDictionaryContent();
+			if (input.contains(fDictionaryContent) && "sensitive_word".equals(fDictionaryCode)) {
+				rs += fDictionaryContent;
+			}
+		}
+		return rs;
+	}
+
+	@RequestMapping("/picturePlay")
+	@ResponseBody
+	public BroadcastResult picturePlay(@RequestParam(value = "pictureName") String pictureName,
+			@RequestParam(value = "pictureURL") String pictureURL,
+			@RequestParam(value = "resourceCodes") String resourceCodes, Integer fid) {
+		BAdRecord bAdRecord = new BAdRecord();
+		bAdRecord.setfBroadcastType((byte) 1);
+		bAdRecord.setfBroadcastDevice(resourceCodes);
+		bAdRecord.setfContentId(fid);
+		boolean result = adRecordService.insertAdRecord(bAdRecord);
+		if (result) {
+			Integer id = bAdRecord.getfId();
+			BroadcastResult broadcastResult = dispatchHttpclientService.sendIpPictureVideo("1", pictureName, pictureURL,
+					resourceCodes, dispatchServerTomcatPort, id);
+			return broadcastResult;
+		} else {
+			return BroadcastResult.fail();
+		}
+	}
+
+	@RequestMapping("/videoPlay")
+	@ResponseBody
+	public BroadcastResult videoPlay(@RequestParam(value = "videoName") String videoName,
+			@RequestParam(value = "videoURL") String videoURL,
+			@RequestParam(value = "resourceCodes") String resourceCodes, Integer fid) {
+
+		BAdRecord bAdRecord = new BAdRecord();
+		bAdRecord.setfBroadcastType((byte) 2); // 0文本 1图片 2视频
+		bAdRecord.setfBroadcastDevice(resourceCodes);
+		bAdRecord.setfContentId(fid);
+		boolean result = adRecordService.insertAdRecord(bAdRecord);
+		if (result) {
+			// Integer id = bAdRecord.getfId();
+			BroadcastResult broadcastResult = dispatchHttpclientService.sendIpPictureVideo("2", videoName, videoURL,
+					resourceCodes, dispatchServerTomcatPort, fid);
+			return broadcastResult;
+		} else {
+			return BroadcastResult.fail();
+		}
+	}
+
+	@RequestMapping("/textPlay")
+	@ResponseBody
+	public BroadcastResult textPlay(@RequestParam(value = "textName") String textName,
+			@RequestParam(value = "textContent") String textContent,
+			@RequestParam(value = "resourceCodes") String resourceCodes, Integer fid) {
+		BAdRecord bAdRecord = new BAdRecord();
+		bAdRecord.setfBroadcastType((byte) 2); // 0文本 1图片 2视频
+		bAdRecord.setfBroadcastDevice(resourceCodes);
+		bAdRecord.setfContentId(fid);
+		boolean result = adRecordService.insertAdRecord(bAdRecord);
+		if (result) {
+			// Integer id = bAdRecord.getfId();
+			BroadcastResult broadcastResult = dispatchHttpclientService.sendIpPictureVideo("0", textName, textContent,
+					resourceCodes, dispatchServerTomcatPort, fid);
+			return broadcastResult;
+		} else {
+			return BroadcastResult.fail();
+		}
+	}
+
+	/**
+	 * 停播 stopPlay
+	 */
+	@RequestMapping("/stopVideoPlay")
+	@ResponseBody
+	public BroadcastResult stopVideoPlay(Integer fId) {
+		// TODO 根据contentid 查询 播发记录id
+		BroadcastResult result = dispatchHttpclientService.stopBroadcast(dispatchServerTomcatPort, "23", fId);
+		return result;
+	}
+	/**
+	 * 停播 stopPlay
+	 */
+	@RequestMapping("/stopPlay")
+	@ResponseBody
+	public BroadcastResult stopPlay(Integer fId) {
+		// TODO 根据contentid 查询 播发记录id
+		BroadcastResult result = dispatchHttpclientService.stopBroadcast(dispatchServerTomcatPort, "1", fId);
+		return result;
+	}
+}

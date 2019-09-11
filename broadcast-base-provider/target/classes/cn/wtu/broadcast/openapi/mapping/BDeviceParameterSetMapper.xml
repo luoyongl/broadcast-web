@@ -1,0 +1,946 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cn.wtu.broadcast.openapi.dao.BDeviceParameterSetMapper" >
+  <resultMap id="BaseResultMap" type="cn.wtu.broadcast.openapi.model.BDeviceParameterSet" >
+    <id column="f_id" property="fId" jdbcType="INTEGER" />
+    <result column="f_device_resource_code" property="fDeviceResourceCode" jdbcType="VARCHAR" />
+    <result column="f_address_setting_cmd" property="fAddressSettingCmd" jdbcType="BIT" />
+    <result column="f_physical_address" property="fPhysicalAddress" jdbcType="VARCHAR" />
+    <result column="f_logic_ddress" property="fLogicDdress" jdbcType="VARCHAR" />
+    <result column="f_workmode_setting_cmd" property="fWorkmodeSettingCmd" jdbcType="BIT" />
+    <result column="f_workmode" property="fWorkmode" jdbcType="TINYINT" />
+    <result column="f_freq_setting_cmd" property="fFreqSettingCmd" jdbcType="BIT" />
+    <result column="f_dtmb_or_dvbc" property="fDtmbOrDvbc" jdbcType="BIT" />
+    <result column="f_dtmb" property="fDtmb" jdbcType="BIT" />
+    <result column="f_dtmb_freq" property="fDtmbFreq" jdbcType="VARCHAR" />
+    <result column="f_dtmb_symbolrate" property="fDtmbSymbolrate" jdbcType="VARCHAR" />
+    <result column="f_dtmb_qam" property="fDtmbQam" jdbcType="TINYINT" />
+    <result column="f_dvbc" property="fDvbc" jdbcType="BIT" />
+    <result column="f_dvbc_freq" property="fDvbcFreq" jdbcType="VARCHAR" />
+    <result column="f_dvbc_symbolrate" property="fDvbcSymbolrate" jdbcType="VARCHAR" />
+    <result column="f_dvbc_qam" property="fDvbcQam" jdbcType="TINYINT" />
+    <result column="f_rebacktype_and_address_cmd" property="fRebacktypeAndAddressCmd" jdbcType="BIT" />
+    <result column="f_reback_type" property="fRebackType" jdbcType="TINYINT" />
+    <result column="f_reback_tel_number" property="fRebackTelNumber" jdbcType="VARCHAR" />
+    <result column="f_reback_IP_address1" property="fRebackIpAddress1" jdbcType="VARCHAR" />
+    <result column="f_reback_IP_address2" property="fRebackIpAddress2" jdbcType="VARCHAR" />
+    <result column="f_reback_IP_port1" property="fRebackIpPort1" jdbcType="VARCHAR" />
+    <result column="f_reback_IP_port2" property="fRebackIpPort2" jdbcType="VARCHAR" />
+    <result column="f_reback_domain_name" property="fRebackDomainName" jdbcType="VARCHAR" />
+    <result column="f_reback_domain_nameport" property="fRebackDomainNameport" jdbcType="VARCHAR" />
+    <result column="f_column_setting_cmd" property="fColumnSettingCmd" jdbcType="BIT" />
+    <result column="f_column" property="fColumn" jdbcType="TINYINT" />
+    <result column="f_reback_period_setting_cmd" property="fRebackPeriodSettingCmd" jdbcType="BIT" />
+    <result column="f_reback_period" property="fRebackPeriod" jdbcType="INTEGER" />
+    <result column="f_rds_setting_cmd" property="fRdsSettingCmd" jdbcType="BIT" />
+    <result column="f_terminal_rds_set" property="fTerminalRdsSet" jdbcType="TINYINT" />
+    <result column="f_terminal_rds_data" property="fTerminalRdsData" jdbcType="VARCHAR" />
+    <result column="f_terminal_inspect_setting_cmd" property="fTerminalInspectSettingCmd" jdbcType="BIT" />
+    <result column="f_terminal_reback_period" property="fTerminalRebackPeriod" jdbcType="INTEGER" />
+    <result column="f_terminal_reback_type" property="fTerminalRebackType" jdbcType="TINYINT" />
+    <result column="f_terminal_pid_setting_cmd" property="fTerminalPidSettingCmd" jdbcType="BIT" />
+    <result column="f_terminal_pid_set" property="fTerminalPidSet" jdbcType="VARCHAR" />
+    <result column="f_record_extract_setting_cmd" property="fRecordExtractSettingCmd" jdbcType="BIT" />
+    <result column="f_record_file_name" property="fRecordFileName" jdbcType="VARCHAR" />
+    <result column="f_start_package_num" property="fStartPackageNum" jdbcType="VARCHAR" />
+    <result column="f_audio_reback_mode" property="fAudioRebackMode" jdbcType="TINYINT" />
+    <result column="f_audio_reback_serverip" property="fAudioRebackServerip" jdbcType="VARCHAR" />
+    <result column="f_audio_reback_port" property="fAudioRebackPort" jdbcType="VARCHAR" />
+    <result column="f_audio_reback_setting_cmd" property="fAudioRebackSettingCmd" jdbcType="BIT" />
+    <result column="f_kaiguan" property="fKaiguan" jdbcType="BIT" />
+    <result column="f_audio_reback_mode_2" property="fAudioRebackMode2" jdbcType="TINYINT" />
+    <result column="f_audio_reback_serverip_2" property="fAudioRebackServerip2" jdbcType="VARCHAR" />
+    <result column="f_audio_reback_port_2" property="fAudioRebackPort2" jdbcType="VARCHAR" />
+    <result column="f_operator" property="fOperator" jdbcType="INTEGER" />
+    <result column="f_operate_time" property="fOperateTime" jdbcType="TIMESTAMP" />
+  </resultMap>
+  <sql id="Example_Where_Clause" >
+    <where >
+      <foreach collection="oredCriteria" item="criteria" separator="or" >
+        <if test="criteria.valid" >
+          <trim prefix="(" suffix=")" prefixOverrides="and" >
+            <foreach collection="criteria.criteria" item="criterion" >
+              <choose >
+                <when test="criterion.noValue" >
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue" >
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue" >
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue" >
+                  and ${criterion.condition}
+                  <foreach collection="criterion.value" item="listItem" open="(" close=")" separator="," >
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  <sql id="Update_By_Example_Where_Clause" >
+    <where >
+      <foreach collection="example.oredCriteria" item="criteria" separator="or" >
+        <if test="criteria.valid" >
+          <trim prefix="(" suffix=")" prefixOverrides="and" >
+            <foreach collection="criteria.criteria" item="criterion" >
+              <choose >
+                <when test="criterion.noValue" >
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue" >
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue" >
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue" >
+                  and ${criterion.condition}
+                  <foreach collection="criterion.value" item="listItem" open="(" close=")" separator="," >
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  <sql id="Base_Column_List" >
+    f_id, f_device_resource_code, f_address_setting_cmd, f_physical_address, f_logic_ddress, 
+    f_workmode_setting_cmd, f_workmode, f_freq_setting_cmd, f_dtmb_or_dvbc, f_dtmb, f_dtmb_freq, 
+    f_dtmb_symbolrate, f_dtmb_qam, f_dvbc, f_dvbc_freq, f_dvbc_symbolrate, f_dvbc_qam, 
+    f_rebacktype_and_address_cmd, f_reback_type, f_reback_tel_number, f_reback_IP_address1, 
+    f_reback_IP_address2, f_reback_IP_port1, f_reback_IP_port2, f_reback_domain_name, 
+    f_reback_domain_nameport, f_column_setting_cmd, f_column, f_reback_period_setting_cmd, 
+    f_reback_period, f_rds_setting_cmd, f_terminal_rds_set, f_terminal_rds_data, f_terminal_inspect_setting_cmd, 
+    f_terminal_reback_period, f_terminal_reback_type, f_terminal_pid_setting_cmd, f_terminal_pid_set, 
+    f_record_extract_setting_cmd, f_record_file_name, f_start_package_num, f_audio_reback_mode, 
+    f_audio_reback_serverip, f_audio_reback_port, f_audio_reback_setting_cmd, f_kaiguan, 
+    f_audio_reback_mode_2, f_audio_reback_serverip_2, f_audio_reback_port_2, f_operator, 
+    f_operate_time
+  </sql>
+  <select id="selectByExample" resultMap="BaseResultMap" parameterType="cn.wtu.broadcast.openapi.model.BDeviceParameterSetExample" >
+    select
+    <if test="distinct" >
+      distinct
+    </if>
+    <include refid="Base_Column_List" />
+    from b_device_parameter_set
+    <if test="_parameter != null" >
+      <include refid="Example_Where_Clause" />
+    </if>
+    <if test="orderByClause != null" >
+      order by ${orderByClause}
+    </if>
+  </select>
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Integer" >
+    select 
+    <include refid="Base_Column_List" />
+    from b_device_parameter_set
+    where f_id = #{fId,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer" >
+    delete from b_device_parameter_set
+    where f_id = #{fId,jdbcType=INTEGER}
+  </delete>
+  <delete id="deleteByExample" parameterType="cn.wtu.broadcast.openapi.model.BDeviceParameterSetExample" >
+    delete from b_device_parameter_set
+    <if test="_parameter != null" >
+      <include refid="Example_Where_Clause" />
+    </if>
+  </delete>
+  <insert id="insert" parameterType="cn.wtu.broadcast.openapi.model.BDeviceParameterSet" >
+    <selectKey resultType="java.lang.Integer" keyProperty="fId" order="AFTER" >
+      SELECT LAST_INSERT_ID()
+    </selectKey>
+    insert into b_device_parameter_set (f_device_resource_code, f_address_setting_cmd, 
+      f_physical_address, f_logic_ddress, f_workmode_setting_cmd, 
+      f_workmode, f_freq_setting_cmd, f_dtmb_or_dvbc, 
+      f_dtmb, f_dtmb_freq, f_dtmb_symbolrate, 
+      f_dtmb_qam, f_dvbc, f_dvbc_freq, 
+      f_dvbc_symbolrate, f_dvbc_qam, f_rebacktype_and_address_cmd, 
+      f_reback_type, f_reback_tel_number, f_reback_IP_address1, 
+      f_reback_IP_address2, f_reback_IP_port1, f_reback_IP_port2, 
+      f_reback_domain_name, f_reback_domain_nameport, 
+      f_column_setting_cmd, f_column, f_reback_period_setting_cmd, 
+      f_reback_period, f_rds_setting_cmd, f_terminal_rds_set, 
+      f_terminal_rds_data, f_terminal_inspect_setting_cmd, 
+      f_terminal_reback_period, f_terminal_reback_type, 
+      f_terminal_pid_setting_cmd, f_terminal_pid_set, f_record_extract_setting_cmd, 
+      f_record_file_name, f_start_package_num, f_audio_reback_mode, 
+      f_audio_reback_serverip, f_audio_reback_port, 
+      f_audio_reback_setting_cmd, f_kaiguan, f_audio_reback_mode_2, 
+      f_audio_reback_serverip_2, f_audio_reback_port_2, 
+      f_operator, f_operate_time)
+    values (#{fDeviceResourceCode,jdbcType=VARCHAR}, #{fAddressSettingCmd,jdbcType=BIT}, 
+      #{fPhysicalAddress,jdbcType=VARCHAR}, #{fLogicDdress,jdbcType=VARCHAR}, #{fWorkmodeSettingCmd,jdbcType=BIT}, 
+      #{fWorkmode,jdbcType=TINYINT}, #{fFreqSettingCmd,jdbcType=BIT}, #{fDtmbOrDvbc,jdbcType=BIT}, 
+      #{fDtmb,jdbcType=BIT}, #{fDtmbFreq,jdbcType=VARCHAR}, #{fDtmbSymbolrate,jdbcType=VARCHAR}, 
+      #{fDtmbQam,jdbcType=TINYINT}, #{fDvbc,jdbcType=BIT}, #{fDvbcFreq,jdbcType=VARCHAR}, 
+      #{fDvbcSymbolrate,jdbcType=VARCHAR}, #{fDvbcQam,jdbcType=TINYINT}, #{fRebacktypeAndAddressCmd,jdbcType=BIT}, 
+      #{fRebackType,jdbcType=TINYINT}, #{fRebackTelNumber,jdbcType=VARCHAR}, #{fRebackIpAddress1,jdbcType=VARCHAR}, 
+      #{fRebackIpAddress2,jdbcType=VARCHAR}, #{fRebackIpPort1,jdbcType=VARCHAR}, #{fRebackIpPort2,jdbcType=VARCHAR}, 
+      #{fRebackDomainName,jdbcType=VARCHAR}, #{fRebackDomainNameport,jdbcType=VARCHAR}, 
+      #{fColumnSettingCmd,jdbcType=BIT}, #{fColumn,jdbcType=TINYINT}, #{fRebackPeriodSettingCmd,jdbcType=BIT}, 
+      #{fRebackPeriod,jdbcType=INTEGER}, #{fRdsSettingCmd,jdbcType=BIT}, #{fTerminalRdsSet,jdbcType=TINYINT}, 
+      #{fTerminalRdsData,jdbcType=VARCHAR}, #{fTerminalInspectSettingCmd,jdbcType=BIT}, 
+      #{fTerminalRebackPeriod,jdbcType=INTEGER}, #{fTerminalRebackType,jdbcType=TINYINT}, 
+      #{fTerminalPidSettingCmd,jdbcType=BIT}, #{fTerminalPidSet,jdbcType=VARCHAR}, #{fRecordExtractSettingCmd,jdbcType=BIT}, 
+      #{fRecordFileName,jdbcType=VARCHAR}, #{fStartPackageNum,jdbcType=VARCHAR}, #{fAudioRebackMode,jdbcType=TINYINT}, 
+      #{fAudioRebackServerip,jdbcType=VARCHAR}, #{fAudioRebackPort,jdbcType=VARCHAR}, 
+      #{fAudioRebackSettingCmd,jdbcType=BIT}, #{fKaiguan,jdbcType=BIT}, #{fAudioRebackMode2,jdbcType=TINYINT}, 
+      #{fAudioRebackServerip2,jdbcType=VARCHAR}, #{fAudioRebackPort2,jdbcType=VARCHAR}, 
+      #{fOperator,jdbcType=INTEGER}, #{fOperateTime,jdbcType=TIMESTAMP})
+  </insert>
+  <insert id="insertSelective" parameterType="cn.wtu.broadcast.openapi.model.BDeviceParameterSet" >
+    <selectKey resultType="java.lang.Integer" keyProperty="fId" order="AFTER" >
+      SELECT LAST_INSERT_ID()
+    </selectKey>
+    insert into b_device_parameter_set
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="fDeviceResourceCode != null" >
+        f_device_resource_code,
+      </if>
+      <if test="fAddressSettingCmd != null" >
+        f_address_setting_cmd,
+      </if>
+      <if test="fPhysicalAddress != null" >
+        f_physical_address,
+      </if>
+      <if test="fLogicDdress != null" >
+        f_logic_ddress,
+      </if>
+      <if test="fWorkmodeSettingCmd != null" >
+        f_workmode_setting_cmd,
+      </if>
+      <if test="fWorkmode != null" >
+        f_workmode,
+      </if>
+      <if test="fFreqSettingCmd != null" >
+        f_freq_setting_cmd,
+      </if>
+      <if test="fDtmbOrDvbc != null" >
+        f_dtmb_or_dvbc,
+      </if>
+      <if test="fDtmb != null" >
+        f_dtmb,
+      </if>
+      <if test="fDtmbFreq != null" >
+        f_dtmb_freq,
+      </if>
+      <if test="fDtmbSymbolrate != null" >
+        f_dtmb_symbolrate,
+      </if>
+      <if test="fDtmbQam != null" >
+        f_dtmb_qam,
+      </if>
+      <if test="fDvbc != null" >
+        f_dvbc,
+      </if>
+      <if test="fDvbcFreq != null" >
+        f_dvbc_freq,
+      </if>
+      <if test="fDvbcSymbolrate != null" >
+        f_dvbc_symbolrate,
+      </if>
+      <if test="fDvbcQam != null" >
+        f_dvbc_qam,
+      </if>
+      <if test="fRebacktypeAndAddressCmd != null" >
+        f_rebacktype_and_address_cmd,
+      </if>
+      <if test="fRebackType != null" >
+        f_reback_type,
+      </if>
+      <if test="fRebackTelNumber != null" >
+        f_reback_tel_number,
+      </if>
+      <if test="fRebackIpAddress1 != null" >
+        f_reback_IP_address1,
+      </if>
+      <if test="fRebackIpAddress2 != null" >
+        f_reback_IP_address2,
+      </if>
+      <if test="fRebackIpPort1 != null" >
+        f_reback_IP_port1,
+      </if>
+      <if test="fRebackIpPort2 != null" >
+        f_reback_IP_port2,
+      </if>
+      <if test="fRebackDomainName != null" >
+        f_reback_domain_name,
+      </if>
+      <if test="fRebackDomainNameport != null" >
+        f_reback_domain_nameport,
+      </if>
+      <if test="fColumnSettingCmd != null" >
+        f_column_setting_cmd,
+      </if>
+      <if test="fColumn != null" >
+        f_column,
+      </if>
+      <if test="fRebackPeriodSettingCmd != null" >
+        f_reback_period_setting_cmd,
+      </if>
+      <if test="fRebackPeriod != null" >
+        f_reback_period,
+      </if>
+      <if test="fRdsSettingCmd != null" >
+        f_rds_setting_cmd,
+      </if>
+      <if test="fTerminalRdsSet != null" >
+        f_terminal_rds_set,
+      </if>
+      <if test="fTerminalRdsData != null" >
+        f_terminal_rds_data,
+      </if>
+      <if test="fTerminalInspectSettingCmd != null" >
+        f_terminal_inspect_setting_cmd,
+      </if>
+      <if test="fTerminalRebackPeriod != null" >
+        f_terminal_reback_period,
+      </if>
+      <if test="fTerminalRebackType != null" >
+        f_terminal_reback_type,
+      </if>
+      <if test="fTerminalPidSettingCmd != null" >
+        f_terminal_pid_setting_cmd,
+      </if>
+      <if test="fTerminalPidSet != null" >
+        f_terminal_pid_set,
+      </if>
+      <if test="fRecordExtractSettingCmd != null" >
+        f_record_extract_setting_cmd,
+      </if>
+      <if test="fRecordFileName != null" >
+        f_record_file_name,
+      </if>
+      <if test="fStartPackageNum != null" >
+        f_start_package_num,
+      </if>
+      <if test="fAudioRebackMode != null" >
+        f_audio_reback_mode,
+      </if>
+      <if test="fAudioRebackServerip != null" >
+        f_audio_reback_serverip,
+      </if>
+      <if test="fAudioRebackPort != null" >
+        f_audio_reback_port,
+      </if>
+      <if test="fAudioRebackSettingCmd != null" >
+        f_audio_reback_setting_cmd,
+      </if>
+      <if test="fKaiguan != null" >
+        f_kaiguan,
+      </if>
+      <if test="fAudioRebackMode2 != null" >
+        f_audio_reback_mode_2,
+      </if>
+      <if test="fAudioRebackServerip2 != null" >
+        f_audio_reback_serverip_2,
+      </if>
+      <if test="fAudioRebackPort2 != null" >
+        f_audio_reback_port_2,
+      </if>
+      <if test="fOperator != null" >
+        f_operator,
+      </if>
+      <if test="fOperateTime != null" >
+        f_operate_time,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="fDeviceResourceCode != null" >
+        #{fDeviceResourceCode,jdbcType=VARCHAR},
+      </if>
+      <if test="fAddressSettingCmd != null" >
+        #{fAddressSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fPhysicalAddress != null" >
+        #{fPhysicalAddress,jdbcType=VARCHAR},
+      </if>
+      <if test="fLogicDdress != null" >
+        #{fLogicDdress,jdbcType=VARCHAR},
+      </if>
+      <if test="fWorkmodeSettingCmd != null" >
+        #{fWorkmodeSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fWorkmode != null" >
+        #{fWorkmode,jdbcType=TINYINT},
+      </if>
+      <if test="fFreqSettingCmd != null" >
+        #{fFreqSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fDtmbOrDvbc != null" >
+        #{fDtmbOrDvbc,jdbcType=BIT},
+      </if>
+      <if test="fDtmb != null" >
+        #{fDtmb,jdbcType=BIT},
+      </if>
+      <if test="fDtmbFreq != null" >
+        #{fDtmbFreq,jdbcType=VARCHAR},
+      </if>
+      <if test="fDtmbSymbolrate != null" >
+        #{fDtmbSymbolrate,jdbcType=VARCHAR},
+      </if>
+      <if test="fDtmbQam != null" >
+        #{fDtmbQam,jdbcType=TINYINT},
+      </if>
+      <if test="fDvbc != null" >
+        #{fDvbc,jdbcType=BIT},
+      </if>
+      <if test="fDvbcFreq != null" >
+        #{fDvbcFreq,jdbcType=VARCHAR},
+      </if>
+      <if test="fDvbcSymbolrate != null" >
+        #{fDvbcSymbolrate,jdbcType=VARCHAR},
+      </if>
+      <if test="fDvbcQam != null" >
+        #{fDvbcQam,jdbcType=TINYINT},
+      </if>
+      <if test="fRebacktypeAndAddressCmd != null" >
+        #{fRebacktypeAndAddressCmd,jdbcType=BIT},
+      </if>
+      <if test="fRebackType != null" >
+        #{fRebackType,jdbcType=TINYINT},
+      </if>
+      <if test="fRebackTelNumber != null" >
+        #{fRebackTelNumber,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackIpAddress1 != null" >
+        #{fRebackIpAddress1,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackIpAddress2 != null" >
+        #{fRebackIpAddress2,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackIpPort1 != null" >
+        #{fRebackIpPort1,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackIpPort2 != null" >
+        #{fRebackIpPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackDomainName != null" >
+        #{fRebackDomainName,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackDomainNameport != null" >
+        #{fRebackDomainNameport,jdbcType=VARCHAR},
+      </if>
+      <if test="fColumnSettingCmd != null" >
+        #{fColumnSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fColumn != null" >
+        #{fColumn,jdbcType=TINYINT},
+      </if>
+      <if test="fRebackPeriodSettingCmd != null" >
+        #{fRebackPeriodSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fRebackPeriod != null" >
+        #{fRebackPeriod,jdbcType=INTEGER},
+      </if>
+      <if test="fRdsSettingCmd != null" >
+        #{fRdsSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fTerminalRdsSet != null" >
+        #{fTerminalRdsSet,jdbcType=TINYINT},
+      </if>
+      <if test="fTerminalRdsData != null" >
+        #{fTerminalRdsData,jdbcType=VARCHAR},
+      </if>
+      <if test="fTerminalInspectSettingCmd != null" >
+        #{fTerminalInspectSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fTerminalRebackPeriod != null" >
+        #{fTerminalRebackPeriod,jdbcType=INTEGER},
+      </if>
+      <if test="fTerminalRebackType != null" >
+        #{fTerminalRebackType,jdbcType=TINYINT},
+      </if>
+      <if test="fTerminalPidSettingCmd != null" >
+        #{fTerminalPidSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fTerminalPidSet != null" >
+        #{fTerminalPidSet,jdbcType=VARCHAR},
+      </if>
+      <if test="fRecordExtractSettingCmd != null" >
+        #{fRecordExtractSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fRecordFileName != null" >
+        #{fRecordFileName,jdbcType=VARCHAR},
+      </if>
+      <if test="fStartPackageNum != null" >
+        #{fStartPackageNum,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioRebackMode != null" >
+        #{fAudioRebackMode,jdbcType=TINYINT},
+      </if>
+      <if test="fAudioRebackServerip != null" >
+        #{fAudioRebackServerip,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioRebackPort != null" >
+        #{fAudioRebackPort,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioRebackSettingCmd != null" >
+        #{fAudioRebackSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fKaiguan != null" >
+        #{fKaiguan,jdbcType=BIT},
+      </if>
+      <if test="fAudioRebackMode2 != null" >
+        #{fAudioRebackMode2,jdbcType=TINYINT},
+      </if>
+      <if test="fAudioRebackServerip2 != null" >
+        #{fAudioRebackServerip2,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioRebackPort2 != null" >
+        #{fAudioRebackPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="fOperator != null" >
+        #{fOperator,jdbcType=INTEGER},
+      </if>
+      <if test="fOperateTime != null" >
+        #{fOperateTime,jdbcType=TIMESTAMP},
+      </if>
+    </trim>
+  </insert>
+  <select id="countByExample" parameterType="cn.wtu.broadcast.openapi.model.BDeviceParameterSetExample" resultType="java.lang.Integer" >
+    select count(*) from b_device_parameter_set
+    <if test="_parameter != null" >
+      <include refid="Example_Where_Clause" />
+    </if>
+  </select>
+  <update id="updateByExampleSelective" parameterType="map" >
+    update b_device_parameter_set
+    <set >
+      <if test="record.fId != null" >
+        f_id = #{record.fId,jdbcType=INTEGER},
+      </if>
+      <if test="record.fDeviceResourceCode != null" >
+        f_device_resource_code = #{record.fDeviceResourceCode,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fAddressSettingCmd != null" >
+        f_address_setting_cmd = #{record.fAddressSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fPhysicalAddress != null" >
+        f_physical_address = #{record.fPhysicalAddress,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fLogicDdress != null" >
+        f_logic_ddress = #{record.fLogicDdress,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fWorkmodeSettingCmd != null" >
+        f_workmode_setting_cmd = #{record.fWorkmodeSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fWorkmode != null" >
+        f_workmode = #{record.fWorkmode,jdbcType=TINYINT},
+      </if>
+      <if test="record.fFreqSettingCmd != null" >
+        f_freq_setting_cmd = #{record.fFreqSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fDtmbOrDvbc != null" >
+        f_dtmb_or_dvbc = #{record.fDtmbOrDvbc,jdbcType=BIT},
+      </if>
+      <if test="record.fDtmb != null" >
+        f_dtmb = #{record.fDtmb,jdbcType=BIT},
+      </if>
+      <if test="record.fDtmbFreq != null" >
+        f_dtmb_freq = #{record.fDtmbFreq,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fDtmbSymbolrate != null" >
+        f_dtmb_symbolrate = #{record.fDtmbSymbolrate,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fDtmbQam != null" >
+        f_dtmb_qam = #{record.fDtmbQam,jdbcType=TINYINT},
+      </if>
+      <if test="record.fDvbc != null" >
+        f_dvbc = #{record.fDvbc,jdbcType=BIT},
+      </if>
+      <if test="record.fDvbcFreq != null" >
+        f_dvbc_freq = #{record.fDvbcFreq,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fDvbcSymbolrate != null" >
+        f_dvbc_symbolrate = #{record.fDvbcSymbolrate,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fDvbcQam != null" >
+        f_dvbc_qam = #{record.fDvbcQam,jdbcType=TINYINT},
+      </if>
+      <if test="record.fRebacktypeAndAddressCmd != null" >
+        f_rebacktype_and_address_cmd = #{record.fRebacktypeAndAddressCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fRebackType != null" >
+        f_reback_type = #{record.fRebackType,jdbcType=TINYINT},
+      </if>
+      <if test="record.fRebackTelNumber != null" >
+        f_reback_tel_number = #{record.fRebackTelNumber,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fRebackIpAddress1 != null" >
+        f_reback_IP_address1 = #{record.fRebackIpAddress1,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fRebackIpAddress2 != null" >
+        f_reback_IP_address2 = #{record.fRebackIpAddress2,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fRebackIpPort1 != null" >
+        f_reback_IP_port1 = #{record.fRebackIpPort1,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fRebackIpPort2 != null" >
+        f_reback_IP_port2 = #{record.fRebackIpPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fRebackDomainName != null" >
+        f_reback_domain_name = #{record.fRebackDomainName,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fRebackDomainNameport != null" >
+        f_reback_domain_nameport = #{record.fRebackDomainNameport,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fColumnSettingCmd != null" >
+        f_column_setting_cmd = #{record.fColumnSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fColumn != null" >
+        f_column = #{record.fColumn,jdbcType=TINYINT},
+      </if>
+      <if test="record.fRebackPeriodSettingCmd != null" >
+        f_reback_period_setting_cmd = #{record.fRebackPeriodSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fRebackPeriod != null" >
+        f_reback_period = #{record.fRebackPeriod,jdbcType=INTEGER},
+      </if>
+      <if test="record.fRdsSettingCmd != null" >
+        f_rds_setting_cmd = #{record.fRdsSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fTerminalRdsSet != null" >
+        f_terminal_rds_set = #{record.fTerminalRdsSet,jdbcType=TINYINT},
+      </if>
+      <if test="record.fTerminalRdsData != null" >
+        f_terminal_rds_data = #{record.fTerminalRdsData,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fTerminalInspectSettingCmd != null" >
+        f_terminal_inspect_setting_cmd = #{record.fTerminalInspectSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fTerminalRebackPeriod != null" >
+        f_terminal_reback_period = #{record.fTerminalRebackPeriod,jdbcType=INTEGER},
+      </if>
+      <if test="record.fTerminalRebackType != null" >
+        f_terminal_reback_type = #{record.fTerminalRebackType,jdbcType=TINYINT},
+      </if>
+      <if test="record.fTerminalPidSettingCmd != null" >
+        f_terminal_pid_setting_cmd = #{record.fTerminalPidSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fTerminalPidSet != null" >
+        f_terminal_pid_set = #{record.fTerminalPidSet,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fRecordExtractSettingCmd != null" >
+        f_record_extract_setting_cmd = #{record.fRecordExtractSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fRecordFileName != null" >
+        f_record_file_name = #{record.fRecordFileName,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fStartPackageNum != null" >
+        f_start_package_num = #{record.fStartPackageNum,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fAudioRebackMode != null" >
+        f_audio_reback_mode = #{record.fAudioRebackMode,jdbcType=TINYINT},
+      </if>
+      <if test="record.fAudioRebackServerip != null" >
+        f_audio_reback_serverip = #{record.fAudioRebackServerip,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fAudioRebackPort != null" >
+        f_audio_reback_port = #{record.fAudioRebackPort,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fAudioRebackSettingCmd != null" >
+        f_audio_reback_setting_cmd = #{record.fAudioRebackSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="record.fKaiguan != null" >
+        f_kaiguan = #{record.fKaiguan,jdbcType=BIT},
+      </if>
+      <if test="record.fAudioRebackMode2 != null" >
+        f_audio_reback_mode_2 = #{record.fAudioRebackMode2,jdbcType=TINYINT},
+      </if>
+      <if test="record.fAudioRebackServerip2 != null" >
+        f_audio_reback_serverip_2 = #{record.fAudioRebackServerip2,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fAudioRebackPort2 != null" >
+        f_audio_reback_port_2 = #{record.fAudioRebackPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fOperator != null" >
+        f_operator = #{record.fOperator,jdbcType=INTEGER},
+      </if>
+      <if test="record.fOperateTime != null" >
+        f_operate_time = #{record.fOperateTime,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    <if test="_parameter != null" >
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  <update id="updateByExample" parameterType="map" >
+    update b_device_parameter_set
+    set f_id = #{record.fId,jdbcType=INTEGER},
+      f_device_resource_code = #{record.fDeviceResourceCode,jdbcType=VARCHAR},
+      f_address_setting_cmd = #{record.fAddressSettingCmd,jdbcType=BIT},
+      f_physical_address = #{record.fPhysicalAddress,jdbcType=VARCHAR},
+      f_logic_ddress = #{record.fLogicDdress,jdbcType=VARCHAR},
+      f_workmode_setting_cmd = #{record.fWorkmodeSettingCmd,jdbcType=BIT},
+      f_workmode = #{record.fWorkmode,jdbcType=TINYINT},
+      f_freq_setting_cmd = #{record.fFreqSettingCmd,jdbcType=BIT},
+      f_dtmb_or_dvbc = #{record.fDtmbOrDvbc,jdbcType=BIT},
+      f_dtmb = #{record.fDtmb,jdbcType=BIT},
+      f_dtmb_freq = #{record.fDtmbFreq,jdbcType=VARCHAR},
+      f_dtmb_symbolrate = #{record.fDtmbSymbolrate,jdbcType=VARCHAR},
+      f_dtmb_qam = #{record.fDtmbQam,jdbcType=TINYINT},
+      f_dvbc = #{record.fDvbc,jdbcType=BIT},
+      f_dvbc_freq = #{record.fDvbcFreq,jdbcType=VARCHAR},
+      f_dvbc_symbolrate = #{record.fDvbcSymbolrate,jdbcType=VARCHAR},
+      f_dvbc_qam = #{record.fDvbcQam,jdbcType=TINYINT},
+      f_rebacktype_and_address_cmd = #{record.fRebacktypeAndAddressCmd,jdbcType=BIT},
+      f_reback_type = #{record.fRebackType,jdbcType=TINYINT},
+      f_reback_tel_number = #{record.fRebackTelNumber,jdbcType=VARCHAR},
+      f_reback_IP_address1 = #{record.fRebackIpAddress1,jdbcType=VARCHAR},
+      f_reback_IP_address2 = #{record.fRebackIpAddress2,jdbcType=VARCHAR},
+      f_reback_IP_port1 = #{record.fRebackIpPort1,jdbcType=VARCHAR},
+      f_reback_IP_port2 = #{record.fRebackIpPort2,jdbcType=VARCHAR},
+      f_reback_domain_name = #{record.fRebackDomainName,jdbcType=VARCHAR},
+      f_reback_domain_nameport = #{record.fRebackDomainNameport,jdbcType=VARCHAR},
+      f_column_setting_cmd = #{record.fColumnSettingCmd,jdbcType=BIT},
+      f_column = #{record.fColumn,jdbcType=TINYINT},
+      f_reback_period_setting_cmd = #{record.fRebackPeriodSettingCmd,jdbcType=BIT},
+      f_reback_period = #{record.fRebackPeriod,jdbcType=INTEGER},
+      f_rds_setting_cmd = #{record.fRdsSettingCmd,jdbcType=BIT},
+      f_terminal_rds_set = #{record.fTerminalRdsSet,jdbcType=TINYINT},
+      f_terminal_rds_data = #{record.fTerminalRdsData,jdbcType=VARCHAR},
+      f_terminal_inspect_setting_cmd = #{record.fTerminalInspectSettingCmd,jdbcType=BIT},
+      f_terminal_reback_period = #{record.fTerminalRebackPeriod,jdbcType=INTEGER},
+      f_terminal_reback_type = #{record.fTerminalRebackType,jdbcType=TINYINT},
+      f_terminal_pid_setting_cmd = #{record.fTerminalPidSettingCmd,jdbcType=BIT},
+      f_terminal_pid_set = #{record.fTerminalPidSet,jdbcType=VARCHAR},
+      f_record_extract_setting_cmd = #{record.fRecordExtractSettingCmd,jdbcType=BIT},
+      f_record_file_name = #{record.fRecordFileName,jdbcType=VARCHAR},
+      f_start_package_num = #{record.fStartPackageNum,jdbcType=VARCHAR},
+      f_audio_reback_mode = #{record.fAudioRebackMode,jdbcType=TINYINT},
+      f_audio_reback_serverip = #{record.fAudioRebackServerip,jdbcType=VARCHAR},
+      f_audio_reback_port = #{record.fAudioRebackPort,jdbcType=VARCHAR},
+      f_audio_reback_setting_cmd = #{record.fAudioRebackSettingCmd,jdbcType=BIT},
+      f_kaiguan = #{record.fKaiguan,jdbcType=BIT},
+      f_audio_reback_mode_2 = #{record.fAudioRebackMode2,jdbcType=TINYINT},
+      f_audio_reback_serverip_2 = #{record.fAudioRebackServerip2,jdbcType=VARCHAR},
+      f_audio_reback_port_2 = #{record.fAudioRebackPort2,jdbcType=VARCHAR},
+      f_operator = #{record.fOperator,jdbcType=INTEGER},
+      f_operate_time = #{record.fOperateTime,jdbcType=TIMESTAMP}
+    <if test="_parameter != null" >
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  <update id="updateByPrimaryKeySelective" parameterType="cn.wtu.broadcast.openapi.model.BDeviceParameterSet" >
+    update b_device_parameter_set
+    <set >
+      <if test="fDeviceResourceCode != null" >
+        f_device_resource_code = #{fDeviceResourceCode,jdbcType=VARCHAR},
+      </if>
+      <if test="fAddressSettingCmd != null" >
+        f_address_setting_cmd = #{fAddressSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fPhysicalAddress != null" >
+        f_physical_address = #{fPhysicalAddress,jdbcType=VARCHAR},
+      </if>
+      <if test="fLogicDdress != null" >
+        f_logic_ddress = #{fLogicDdress,jdbcType=VARCHAR},
+      </if>
+      <if test="fWorkmodeSettingCmd != null" >
+        f_workmode_setting_cmd = #{fWorkmodeSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fWorkmode != null" >
+        f_workmode = #{fWorkmode,jdbcType=TINYINT},
+      </if>
+      <if test="fFreqSettingCmd != null" >
+        f_freq_setting_cmd = #{fFreqSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fDtmbOrDvbc != null" >
+        f_dtmb_or_dvbc = #{fDtmbOrDvbc,jdbcType=BIT},
+      </if>
+      <if test="fDtmb != null" >
+        f_dtmb = #{fDtmb,jdbcType=BIT},
+      </if>
+      <if test="fDtmbFreq != null" >
+        f_dtmb_freq = #{fDtmbFreq,jdbcType=VARCHAR},
+      </if>
+      <if test="fDtmbSymbolrate != null" >
+        f_dtmb_symbolrate = #{fDtmbSymbolrate,jdbcType=VARCHAR},
+      </if>
+      <if test="fDtmbQam != null" >
+        f_dtmb_qam = #{fDtmbQam,jdbcType=TINYINT},
+      </if>
+      <if test="fDvbc != null" >
+        f_dvbc = #{fDvbc,jdbcType=BIT},
+      </if>
+      <if test="fDvbcFreq != null" >
+        f_dvbc_freq = #{fDvbcFreq,jdbcType=VARCHAR},
+      </if>
+      <if test="fDvbcSymbolrate != null" >
+        f_dvbc_symbolrate = #{fDvbcSymbolrate,jdbcType=VARCHAR},
+      </if>
+      <if test="fDvbcQam != null" >
+        f_dvbc_qam = #{fDvbcQam,jdbcType=TINYINT},
+      </if>
+      <if test="fRebacktypeAndAddressCmd != null" >
+        f_rebacktype_and_address_cmd = #{fRebacktypeAndAddressCmd,jdbcType=BIT},
+      </if>
+      <if test="fRebackType != null" >
+        f_reback_type = #{fRebackType,jdbcType=TINYINT},
+      </if>
+      <if test="fRebackTelNumber != null" >
+        f_reback_tel_number = #{fRebackTelNumber,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackIpAddress1 != null" >
+        f_reback_IP_address1 = #{fRebackIpAddress1,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackIpAddress2 != null" >
+        f_reback_IP_address2 = #{fRebackIpAddress2,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackIpPort1 != null" >
+        f_reback_IP_port1 = #{fRebackIpPort1,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackIpPort2 != null" >
+        f_reback_IP_port2 = #{fRebackIpPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackDomainName != null" >
+        f_reback_domain_name = #{fRebackDomainName,jdbcType=VARCHAR},
+      </if>
+      <if test="fRebackDomainNameport != null" >
+        f_reback_domain_nameport = #{fRebackDomainNameport,jdbcType=VARCHAR},
+      </if>
+      <if test="fColumnSettingCmd != null" >
+        f_column_setting_cmd = #{fColumnSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fColumn != null" >
+        f_column = #{fColumn,jdbcType=TINYINT},
+      </if>
+      <if test="fRebackPeriodSettingCmd != null" >
+        f_reback_period_setting_cmd = #{fRebackPeriodSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fRebackPeriod != null" >
+        f_reback_period = #{fRebackPeriod,jdbcType=INTEGER},
+      </if>
+      <if test="fRdsSettingCmd != null" >
+        f_rds_setting_cmd = #{fRdsSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fTerminalRdsSet != null" >
+        f_terminal_rds_set = #{fTerminalRdsSet,jdbcType=TINYINT},
+      </if>
+      <if test="fTerminalRdsData != null" >
+        f_terminal_rds_data = #{fTerminalRdsData,jdbcType=VARCHAR},
+      </if>
+      <if test="fTerminalInspectSettingCmd != null" >
+        f_terminal_inspect_setting_cmd = #{fTerminalInspectSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fTerminalRebackPeriod != null" >
+        f_terminal_reback_period = #{fTerminalRebackPeriod,jdbcType=INTEGER},
+      </if>
+      <if test="fTerminalRebackType != null" >
+        f_terminal_reback_type = #{fTerminalRebackType,jdbcType=TINYINT},
+      </if>
+      <if test="fTerminalPidSettingCmd != null" >
+        f_terminal_pid_setting_cmd = #{fTerminalPidSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fTerminalPidSet != null" >
+        f_terminal_pid_set = #{fTerminalPidSet,jdbcType=VARCHAR},
+      </if>
+      <if test="fRecordExtractSettingCmd != null" >
+        f_record_extract_setting_cmd = #{fRecordExtractSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fRecordFileName != null" >
+        f_record_file_name = #{fRecordFileName,jdbcType=VARCHAR},
+      </if>
+      <if test="fStartPackageNum != null" >
+        f_start_package_num = #{fStartPackageNum,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioRebackMode != null" >
+        f_audio_reback_mode = #{fAudioRebackMode,jdbcType=TINYINT},
+      </if>
+      <if test="fAudioRebackServerip != null" >
+        f_audio_reback_serverip = #{fAudioRebackServerip,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioRebackPort != null" >
+        f_audio_reback_port = #{fAudioRebackPort,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioRebackSettingCmd != null" >
+        f_audio_reback_setting_cmd = #{fAudioRebackSettingCmd,jdbcType=BIT},
+      </if>
+      <if test="fKaiguan != null" >
+        f_kaiguan = #{fKaiguan,jdbcType=BIT},
+      </if>
+      <if test="fAudioRebackMode2 != null" >
+        f_audio_reback_mode_2 = #{fAudioRebackMode2,jdbcType=TINYINT},
+      </if>
+      <if test="fAudioRebackServerip2 != null" >
+        f_audio_reback_serverip_2 = #{fAudioRebackServerip2,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioRebackPort2 != null" >
+        f_audio_reback_port_2 = #{fAudioRebackPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="fOperator != null" >
+        f_operator = #{fOperator,jdbcType=INTEGER},
+      </if>
+      <if test="fOperateTime != null" >
+        f_operate_time = #{fOperateTime,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    where f_id = #{fId,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="cn.wtu.broadcast.openapi.model.BDeviceParameterSet" >
+    update b_device_parameter_set
+    set f_device_resource_code = #{fDeviceResourceCode,jdbcType=VARCHAR},
+      f_address_setting_cmd = #{fAddressSettingCmd,jdbcType=BIT},
+      f_physical_address = #{fPhysicalAddress,jdbcType=VARCHAR},
+      f_logic_ddress = #{fLogicDdress,jdbcType=VARCHAR},
+      f_workmode_setting_cmd = #{fWorkmodeSettingCmd,jdbcType=BIT},
+      f_workmode = #{fWorkmode,jdbcType=TINYINT},
+      f_freq_setting_cmd = #{fFreqSettingCmd,jdbcType=BIT},
+      f_dtmb_or_dvbc = #{fDtmbOrDvbc,jdbcType=BIT},
+      f_dtmb = #{fDtmb,jdbcType=BIT},
+      f_dtmb_freq = #{fDtmbFreq,jdbcType=VARCHAR},
+      f_dtmb_symbolrate = #{fDtmbSymbolrate,jdbcType=VARCHAR},
+      f_dtmb_qam = #{fDtmbQam,jdbcType=TINYINT},
+      f_dvbc = #{fDvbc,jdbcType=BIT},
+      f_dvbc_freq = #{fDvbcFreq,jdbcType=VARCHAR},
+      f_dvbc_symbolrate = #{fDvbcSymbolrate,jdbcType=VARCHAR},
+      f_dvbc_qam = #{fDvbcQam,jdbcType=TINYINT},
+      f_rebacktype_and_address_cmd = #{fRebacktypeAndAddressCmd,jdbcType=BIT},
+      f_reback_type = #{fRebackType,jdbcType=TINYINT},
+      f_reback_tel_number = #{fRebackTelNumber,jdbcType=VARCHAR},
+      f_reback_IP_address1 = #{fRebackIpAddress1,jdbcType=VARCHAR},
+      f_reback_IP_address2 = #{fRebackIpAddress2,jdbcType=VARCHAR},
+      f_reback_IP_port1 = #{fRebackIpPort1,jdbcType=VARCHAR},
+      f_reback_IP_port2 = #{fRebackIpPort2,jdbcType=VARCHAR},
+      f_reback_domain_name = #{fRebackDomainName,jdbcType=VARCHAR},
+      f_reback_domain_nameport = #{fRebackDomainNameport,jdbcType=VARCHAR},
+      f_column_setting_cmd = #{fColumnSettingCmd,jdbcType=BIT},
+      f_column = #{fColumn,jdbcType=TINYINT},
+      f_reback_period_setting_cmd = #{fRebackPeriodSettingCmd,jdbcType=BIT},
+      f_reback_period = #{fRebackPeriod,jdbcType=INTEGER},
+      f_rds_setting_cmd = #{fRdsSettingCmd,jdbcType=BIT},
+      f_terminal_rds_set = #{fTerminalRdsSet,jdbcType=TINYINT},
+      f_terminal_rds_data = #{fTerminalRdsData,jdbcType=VARCHAR},
+      f_terminal_inspect_setting_cmd = #{fTerminalInspectSettingCmd,jdbcType=BIT},
+      f_terminal_reback_period = #{fTerminalRebackPeriod,jdbcType=INTEGER},
+      f_terminal_reback_type = #{fTerminalRebackType,jdbcType=TINYINT},
+      f_terminal_pid_setting_cmd = #{fTerminalPidSettingCmd,jdbcType=BIT},
+      f_terminal_pid_set = #{fTerminalPidSet,jdbcType=VARCHAR},
+      f_record_extract_setting_cmd = #{fRecordExtractSettingCmd,jdbcType=BIT},
+      f_record_file_name = #{fRecordFileName,jdbcType=VARCHAR},
+      f_start_package_num = #{fStartPackageNum,jdbcType=VARCHAR},
+      f_audio_reback_mode = #{fAudioRebackMode,jdbcType=TINYINT},
+      f_audio_reback_serverip = #{fAudioRebackServerip,jdbcType=VARCHAR},
+      f_audio_reback_port = #{fAudioRebackPort,jdbcType=VARCHAR},
+      f_audio_reback_setting_cmd = #{fAudioRebackSettingCmd,jdbcType=BIT},
+      f_kaiguan = #{fKaiguan,jdbcType=BIT},
+      f_audio_reback_mode_2 = #{fAudioRebackMode2,jdbcType=TINYINT},
+      f_audio_reback_serverip_2 = #{fAudioRebackServerip2,jdbcType=VARCHAR},
+      f_audio_reback_port_2 = #{fAudioRebackPort2,jdbcType=VARCHAR},
+      f_operator = #{fOperator,jdbcType=INTEGER},
+      f_operate_time = #{fOperateTime,jdbcType=TIMESTAMP}
+    where f_id = #{fId,jdbcType=INTEGER}
+  </update>
+</mapper>

@@ -1,0 +1,518 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cn.wtu.broadcast.openapi.dao.BDeviceConfigMapper" >
+  <resultMap id="BaseResultMap" type="cn.wtu.broadcast.openapi.model.BDeviceConfig" >
+    <id column="f_id" property="fId" jdbcType="INTEGER" />
+    <result column="f_device_id" property="fDeviceId" jdbcType="INTEGER" />
+    <result column="f_fm_receive_rate" property="fFmReceiveRate" jdbcType="VARCHAR" />
+    <result column="f_tv_mode" property="fTvMode" jdbcType="TINYINT" />
+    <result column="f_tv_frequency" property="fTvFrequency" jdbcType="VARCHAR" />
+    <result column="f_qam_method" property="fQamMethod" jdbcType="TINYINT" />
+    <result column="f_default_volume" property="fDefaultVolume" jdbcType="VARCHAR" />
+    <result column="f_broadcast_timeout" property="fBroadcastTimeout" jdbcType="VARCHAR" />
+    <result column="f_data_backhaulip_address1" property="fDataBackhaulipAddress1" jdbcType="VARCHAR" />
+    <result column="f_data_backhaulip_port1" property="fDataBackhaulipPort1" jdbcType="VARCHAR" />
+    <result column="f_audio_backhaul_address1" property="fAudioBackhaulAddress1" jdbcType="VARCHAR" />
+    <result column="f_audio_backhaul_port1" property="fAudioBackhaulPort1" jdbcType="VARCHAR" />
+    <result column="f_data_backhaulip_address2" property="fDataBackhaulipAddress2" jdbcType="VARCHAR" />
+    <result column="f_data_backhaulip_port2" property="fDataBackhaulipPort2" jdbcType="VARCHAR" />
+    <result column="f_audio_backhaul_address2" property="fAudioBackhaulAddress2" jdbcType="VARCHAR" />
+    <result column="f_audio_backhaul_port2" property="fAudioBackhaulPort2" jdbcType="VARCHAR" />
+    <result column="f_logicalarea_code" property="fLogicalareaCode" jdbcType="VARCHAR" />
+    <result column="f_network_mode" property="fNetworkMode" jdbcType="BIT" />
+    <result column="f_ip_address" property="fIpAddress" jdbcType="BIT" />
+    <result column="f_mask" property="fMask" jdbcType="VARCHAR" />
+    <result column="f_default_gateway" property="fDefaultGateway" jdbcType="VARCHAR" />
+    <result column="f_audio_callback_protocol" property="fAudioCallbackProtocol" jdbcType="TINYINT" />
+    <result column="f_terminal_server_handshake" property="fTerminalServerHandshake" jdbcType="TINYINT" />
+    <result column="f_audio_callback_Trigger" property="fAudioCallbackTrigger" jdbcType="VARCHAR" />
+  </resultMap>
+  <sql id="Example_Where_Clause" >
+    <where >
+      <foreach collection="oredCriteria" item="criteria" separator="or" >
+        <if test="criteria.valid" >
+          <trim prefix="(" suffix=")" prefixOverrides="and" >
+            <foreach collection="criteria.criteria" item="criterion" >
+              <choose >
+                <when test="criterion.noValue" >
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue" >
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue" >
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue" >
+                  and ${criterion.condition}
+                  <foreach collection="criterion.value" item="listItem" open="(" close=")" separator="," >
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  <sql id="Update_By_Example_Where_Clause" >
+    <where >
+      <foreach collection="example.oredCriteria" item="criteria" separator="or" >
+        <if test="criteria.valid" >
+          <trim prefix="(" suffix=")" prefixOverrides="and" >
+            <foreach collection="criteria.criteria" item="criterion" >
+              <choose >
+                <when test="criterion.noValue" >
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue" >
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue" >
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue" >
+                  and ${criterion.condition}
+                  <foreach collection="criterion.value" item="listItem" open="(" close=")" separator="," >
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  <sql id="Base_Column_List" >
+    f_id, f_device_id, f_fm_receive_rate, f_tv_mode, f_tv_frequency, f_qam_method, f_default_volume, 
+    f_broadcast_timeout, f_data_backhaulip_address1, f_data_backhaulip_port1, f_audio_backhaul_address1, 
+    f_audio_backhaul_port1, f_data_backhaulip_address2, f_data_backhaulip_port2, f_audio_backhaul_address2, 
+    f_audio_backhaul_port2, f_logicalarea_code, f_network_mode, f_ip_address, f_mask, 
+    f_default_gateway, f_audio_callback_protocol, f_terminal_server_handshake, f_audio_callback_Trigger
+  </sql>
+  <select id="selectByExample" resultMap="BaseResultMap" parameterType="cn.wtu.broadcast.openapi.model.BDeviceConfigExample" >
+    select
+    <if test="distinct" >
+      distinct
+    </if>
+    <include refid="Base_Column_List" />
+    from b_device_config
+    <if test="_parameter != null" >
+      <include refid="Example_Where_Clause" />
+    </if>
+    <if test="orderByClause != null" >
+      order by ${orderByClause}
+    </if>
+  </select>
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Integer" >
+    select 
+    <include refid="Base_Column_List" />
+    from b_device_config
+    where f_id = #{fId,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer" >
+    delete from b_device_config
+    where f_id = #{fId,jdbcType=INTEGER}
+  </delete>
+  <delete id="deleteByExample" parameterType="cn.wtu.broadcast.openapi.model.BDeviceConfigExample" >
+    delete from b_device_config
+    <if test="_parameter != null" >
+      <include refid="Example_Where_Clause" />
+    </if>
+  </delete>
+  <insert id="insert" parameterType="cn.wtu.broadcast.openapi.model.BDeviceConfig" >
+    insert into b_device_config (f_id, f_device_id, f_fm_receive_rate, 
+      f_tv_mode, f_tv_frequency, f_qam_method, 
+      f_default_volume, f_broadcast_timeout, f_data_backhaulip_address1, 
+      f_data_backhaulip_port1, f_audio_backhaul_address1, 
+      f_audio_backhaul_port1, f_data_backhaulip_address2, 
+      f_data_backhaulip_port2, f_audio_backhaul_address2, 
+      f_audio_backhaul_port2, f_logicalarea_code, 
+      f_network_mode, f_ip_address, f_mask, 
+      f_default_gateway, f_audio_callback_protocol, 
+      f_terminal_server_handshake, f_audio_callback_Trigger
+      )
+    values (#{fId,jdbcType=INTEGER}, #{fDeviceId,jdbcType=INTEGER}, #{fFmReceiveRate,jdbcType=VARCHAR}, 
+      #{fTvMode,jdbcType=TINYINT}, #{fTvFrequency,jdbcType=VARCHAR}, #{fQamMethod,jdbcType=TINYINT}, 
+      #{fDefaultVolume,jdbcType=VARCHAR}, #{fBroadcastTimeout,jdbcType=VARCHAR}, #{fDataBackhaulipAddress1,jdbcType=VARCHAR}, 
+      #{fDataBackhaulipPort1,jdbcType=VARCHAR}, #{fAudioBackhaulAddress1,jdbcType=VARCHAR}, 
+      #{fAudioBackhaulPort1,jdbcType=VARCHAR}, #{fDataBackhaulipAddress2,jdbcType=VARCHAR}, 
+      #{fDataBackhaulipPort2,jdbcType=VARCHAR}, #{fAudioBackhaulAddress2,jdbcType=VARCHAR}, 
+      #{fAudioBackhaulPort2,jdbcType=VARCHAR}, #{fLogicalareaCode,jdbcType=VARCHAR}, 
+      #{fNetworkMode,jdbcType=BIT}, #{fIpAddress,jdbcType=BIT}, #{fMask,jdbcType=VARCHAR}, 
+      #{fDefaultGateway,jdbcType=VARCHAR}, #{fAudioCallbackProtocol,jdbcType=TINYINT}, 
+      #{fTerminalServerHandshake,jdbcType=TINYINT}, #{fAudioCallbackTrigger,jdbcType=VARCHAR}
+      )
+  </insert>
+  <insert id="insertSelective" parameterType="cn.wtu.broadcast.openapi.model.BDeviceConfig" >
+    insert into b_device_config
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="fId != null" >
+        f_id,
+      </if>
+      <if test="fDeviceId != null" >
+        f_device_id,
+      </if>
+      <if test="fFmReceiveRate != null" >
+        f_fm_receive_rate,
+      </if>
+      <if test="fTvMode != null" >
+        f_tv_mode,
+      </if>
+      <if test="fTvFrequency != null" >
+        f_tv_frequency,
+      </if>
+      <if test="fQamMethod != null" >
+        f_qam_method,
+      </if>
+      <if test="fDefaultVolume != null" >
+        f_default_volume,
+      </if>
+      <if test="fBroadcastTimeout != null" >
+        f_broadcast_timeout,
+      </if>
+      <if test="fDataBackhaulipAddress1 != null" >
+        f_data_backhaulip_address1,
+      </if>
+      <if test="fDataBackhaulipPort1 != null" >
+        f_data_backhaulip_port1,
+      </if>
+      <if test="fAudioBackhaulAddress1 != null" >
+        f_audio_backhaul_address1,
+      </if>
+      <if test="fAudioBackhaulPort1 != null" >
+        f_audio_backhaul_port1,
+      </if>
+      <if test="fDataBackhaulipAddress2 != null" >
+        f_data_backhaulip_address2,
+      </if>
+      <if test="fDataBackhaulipPort2 != null" >
+        f_data_backhaulip_port2,
+      </if>
+      <if test="fAudioBackhaulAddress2 != null" >
+        f_audio_backhaul_address2,
+      </if>
+      <if test="fAudioBackhaulPort2 != null" >
+        f_audio_backhaul_port2,
+      </if>
+      <if test="fLogicalareaCode != null" >
+        f_logicalarea_code,
+      </if>
+      <if test="fNetworkMode != null" >
+        f_network_mode,
+      </if>
+      <if test="fIpAddress != null" >
+        f_ip_address,
+      </if>
+      <if test="fMask != null" >
+        f_mask,
+      </if>
+      <if test="fDefaultGateway != null" >
+        f_default_gateway,
+      </if>
+      <if test="fAudioCallbackProtocol != null" >
+        f_audio_callback_protocol,
+      </if>
+      <if test="fTerminalServerHandshake != null" >
+        f_terminal_server_handshake,
+      </if>
+      <if test="fAudioCallbackTrigger != null" >
+        f_audio_callback_Trigger,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="fId != null" >
+        #{fId,jdbcType=INTEGER},
+      </if>
+      <if test="fDeviceId != null" >
+        #{fDeviceId,jdbcType=INTEGER},
+      </if>
+      <if test="fFmReceiveRate != null" >
+        #{fFmReceiveRate,jdbcType=VARCHAR},
+      </if>
+      <if test="fTvMode != null" >
+        #{fTvMode,jdbcType=TINYINT},
+      </if>
+      <if test="fTvFrequency != null" >
+        #{fTvFrequency,jdbcType=VARCHAR},
+      </if>
+      <if test="fQamMethod != null" >
+        #{fQamMethod,jdbcType=TINYINT},
+      </if>
+      <if test="fDefaultVolume != null" >
+        #{fDefaultVolume,jdbcType=VARCHAR},
+      </if>
+      <if test="fBroadcastTimeout != null" >
+        #{fBroadcastTimeout,jdbcType=VARCHAR},
+      </if>
+      <if test="fDataBackhaulipAddress1 != null" >
+        #{fDataBackhaulipAddress1,jdbcType=VARCHAR},
+      </if>
+      <if test="fDataBackhaulipPort1 != null" >
+        #{fDataBackhaulipPort1,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioBackhaulAddress1 != null" >
+        #{fAudioBackhaulAddress1,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioBackhaulPort1 != null" >
+        #{fAudioBackhaulPort1,jdbcType=VARCHAR},
+      </if>
+      <if test="fDataBackhaulipAddress2 != null" >
+        #{fDataBackhaulipAddress2,jdbcType=VARCHAR},
+      </if>
+      <if test="fDataBackhaulipPort2 != null" >
+        #{fDataBackhaulipPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioBackhaulAddress2 != null" >
+        #{fAudioBackhaulAddress2,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioBackhaulPort2 != null" >
+        #{fAudioBackhaulPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="fLogicalareaCode != null" >
+        #{fLogicalareaCode,jdbcType=VARCHAR},
+      </if>
+      <if test="fNetworkMode != null" >
+        #{fNetworkMode,jdbcType=BIT},
+      </if>
+      <if test="fIpAddress != null" >
+        #{fIpAddress,jdbcType=BIT},
+      </if>
+      <if test="fMask != null" >
+        #{fMask,jdbcType=VARCHAR},
+      </if>
+      <if test="fDefaultGateway != null" >
+        #{fDefaultGateway,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioCallbackProtocol != null" >
+        #{fAudioCallbackProtocol,jdbcType=TINYINT},
+      </if>
+      <if test="fTerminalServerHandshake != null" >
+        #{fTerminalServerHandshake,jdbcType=TINYINT},
+      </if>
+      <if test="fAudioCallbackTrigger != null" >
+        #{fAudioCallbackTrigger,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <select id="countByExample" parameterType="cn.wtu.broadcast.openapi.model.BDeviceConfigExample" resultType="java.lang.Integer" >
+    select count(*) from b_device_config
+    <if test="_parameter != null" >
+      <include refid="Example_Where_Clause" />
+    </if>
+  </select>
+  <update id="updateByExampleSelective" parameterType="map" >
+    update b_device_config
+    <set >
+      <if test="record.fId != null" >
+        f_id = #{record.fId,jdbcType=INTEGER},
+      </if>
+      <if test="record.fDeviceId != null" >
+        f_device_id = #{record.fDeviceId,jdbcType=INTEGER},
+      </if>
+      <if test="record.fFmReceiveRate != null" >
+        f_fm_receive_rate = #{record.fFmReceiveRate,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fTvMode != null" >
+        f_tv_mode = #{record.fTvMode,jdbcType=TINYINT},
+      </if>
+      <if test="record.fTvFrequency != null" >
+        f_tv_frequency = #{record.fTvFrequency,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fQamMethod != null" >
+        f_qam_method = #{record.fQamMethod,jdbcType=TINYINT},
+      </if>
+      <if test="record.fDefaultVolume != null" >
+        f_default_volume = #{record.fDefaultVolume,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fBroadcastTimeout != null" >
+        f_broadcast_timeout = #{record.fBroadcastTimeout,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fDataBackhaulipAddress1 != null" >
+        f_data_backhaulip_address1 = #{record.fDataBackhaulipAddress1,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fDataBackhaulipPort1 != null" >
+        f_data_backhaulip_port1 = #{record.fDataBackhaulipPort1,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fAudioBackhaulAddress1 != null" >
+        f_audio_backhaul_address1 = #{record.fAudioBackhaulAddress1,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fAudioBackhaulPort1 != null" >
+        f_audio_backhaul_port1 = #{record.fAudioBackhaulPort1,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fDataBackhaulipAddress2 != null" >
+        f_data_backhaulip_address2 = #{record.fDataBackhaulipAddress2,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fDataBackhaulipPort2 != null" >
+        f_data_backhaulip_port2 = #{record.fDataBackhaulipPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fAudioBackhaulAddress2 != null" >
+        f_audio_backhaul_address2 = #{record.fAudioBackhaulAddress2,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fAudioBackhaulPort2 != null" >
+        f_audio_backhaul_port2 = #{record.fAudioBackhaulPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fLogicalareaCode != null" >
+        f_logicalarea_code = #{record.fLogicalareaCode,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fNetworkMode != null" >
+        f_network_mode = #{record.fNetworkMode,jdbcType=BIT},
+      </if>
+      <if test="record.fIpAddress != null" >
+        f_ip_address = #{record.fIpAddress,jdbcType=BIT},
+      </if>
+      <if test="record.fMask != null" >
+        f_mask = #{record.fMask,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fDefaultGateway != null" >
+        f_default_gateway = #{record.fDefaultGateway,jdbcType=VARCHAR},
+      </if>
+      <if test="record.fAudioCallbackProtocol != null" >
+        f_audio_callback_protocol = #{record.fAudioCallbackProtocol,jdbcType=TINYINT},
+      </if>
+      <if test="record.fTerminalServerHandshake != null" >
+        f_terminal_server_handshake = #{record.fTerminalServerHandshake,jdbcType=TINYINT},
+      </if>
+      <if test="record.fAudioCallbackTrigger != null" >
+        f_audio_callback_Trigger = #{record.fAudioCallbackTrigger,jdbcType=VARCHAR},
+      </if>
+    </set>
+    <if test="_parameter != null" >
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  <update id="updateByExample" parameterType="map" >
+    update b_device_config
+    set f_id = #{record.fId,jdbcType=INTEGER},
+      f_device_id = #{record.fDeviceId,jdbcType=INTEGER},
+      f_fm_receive_rate = #{record.fFmReceiveRate,jdbcType=VARCHAR},
+      f_tv_mode = #{record.fTvMode,jdbcType=TINYINT},
+      f_tv_frequency = #{record.fTvFrequency,jdbcType=VARCHAR},
+      f_qam_method = #{record.fQamMethod,jdbcType=TINYINT},
+      f_default_volume = #{record.fDefaultVolume,jdbcType=VARCHAR},
+      f_broadcast_timeout = #{record.fBroadcastTimeout,jdbcType=VARCHAR},
+      f_data_backhaulip_address1 = #{record.fDataBackhaulipAddress1,jdbcType=VARCHAR},
+      f_data_backhaulip_port1 = #{record.fDataBackhaulipPort1,jdbcType=VARCHAR},
+      f_audio_backhaul_address1 = #{record.fAudioBackhaulAddress1,jdbcType=VARCHAR},
+      f_audio_backhaul_port1 = #{record.fAudioBackhaulPort1,jdbcType=VARCHAR},
+      f_data_backhaulip_address2 = #{record.fDataBackhaulipAddress2,jdbcType=VARCHAR},
+      f_data_backhaulip_port2 = #{record.fDataBackhaulipPort2,jdbcType=VARCHAR},
+      f_audio_backhaul_address2 = #{record.fAudioBackhaulAddress2,jdbcType=VARCHAR},
+      f_audio_backhaul_port2 = #{record.fAudioBackhaulPort2,jdbcType=VARCHAR},
+      f_logicalarea_code = #{record.fLogicalareaCode,jdbcType=VARCHAR},
+      f_network_mode = #{record.fNetworkMode,jdbcType=BIT},
+      f_ip_address = #{record.fIpAddress,jdbcType=BIT},
+      f_mask = #{record.fMask,jdbcType=VARCHAR},
+      f_default_gateway = #{record.fDefaultGateway,jdbcType=VARCHAR},
+      f_audio_callback_protocol = #{record.fAudioCallbackProtocol,jdbcType=TINYINT},
+      f_terminal_server_handshake = #{record.fTerminalServerHandshake,jdbcType=TINYINT},
+      f_audio_callback_Trigger = #{record.fAudioCallbackTrigger,jdbcType=VARCHAR}
+    <if test="_parameter != null" >
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  <update id="updateByPrimaryKeySelective" parameterType="cn.wtu.broadcast.openapi.model.BDeviceConfig" >
+    update b_device_config
+    <set >
+      <if test="fDeviceId != null" >
+        f_device_id = #{fDeviceId,jdbcType=INTEGER},
+      </if>
+      <if test="fFmReceiveRate != null" >
+        f_fm_receive_rate = #{fFmReceiveRate,jdbcType=VARCHAR},
+      </if>
+      <if test="fTvMode != null" >
+        f_tv_mode = #{fTvMode,jdbcType=TINYINT},
+      </if>
+      <if test="fTvFrequency != null" >
+        f_tv_frequency = #{fTvFrequency,jdbcType=VARCHAR},
+      </if>
+      <if test="fQamMethod != null" >
+        f_qam_method = #{fQamMethod,jdbcType=TINYINT},
+      </if>
+      <if test="fDefaultVolume != null" >
+        f_default_volume = #{fDefaultVolume,jdbcType=VARCHAR},
+      </if>
+      <if test="fBroadcastTimeout != null" >
+        f_broadcast_timeout = #{fBroadcastTimeout,jdbcType=VARCHAR},
+      </if>
+      <if test="fDataBackhaulipAddress1 != null" >
+        f_data_backhaulip_address1 = #{fDataBackhaulipAddress1,jdbcType=VARCHAR},
+      </if>
+      <if test="fDataBackhaulipPort1 != null" >
+        f_data_backhaulip_port1 = #{fDataBackhaulipPort1,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioBackhaulAddress1 != null" >
+        f_audio_backhaul_address1 = #{fAudioBackhaulAddress1,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioBackhaulPort1 != null" >
+        f_audio_backhaul_port1 = #{fAudioBackhaulPort1,jdbcType=VARCHAR},
+      </if>
+      <if test="fDataBackhaulipAddress2 != null" >
+        f_data_backhaulip_address2 = #{fDataBackhaulipAddress2,jdbcType=VARCHAR},
+      </if>
+      <if test="fDataBackhaulipPort2 != null" >
+        f_data_backhaulip_port2 = #{fDataBackhaulipPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioBackhaulAddress2 != null" >
+        f_audio_backhaul_address2 = #{fAudioBackhaulAddress2,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioBackhaulPort2 != null" >
+        f_audio_backhaul_port2 = #{fAudioBackhaulPort2,jdbcType=VARCHAR},
+      </if>
+      <if test="fLogicalareaCode != null" >
+        f_logicalarea_code = #{fLogicalareaCode,jdbcType=VARCHAR},
+      </if>
+      <if test="fNetworkMode != null" >
+        f_network_mode = #{fNetworkMode,jdbcType=BIT},
+      </if>
+      <if test="fIpAddress != null" >
+        f_ip_address = #{fIpAddress,jdbcType=BIT},
+      </if>
+      <if test="fMask != null" >
+        f_mask = #{fMask,jdbcType=VARCHAR},
+      </if>
+      <if test="fDefaultGateway != null" >
+        f_default_gateway = #{fDefaultGateway,jdbcType=VARCHAR},
+      </if>
+      <if test="fAudioCallbackProtocol != null" >
+        f_audio_callback_protocol = #{fAudioCallbackProtocol,jdbcType=TINYINT},
+      </if>
+      <if test="fTerminalServerHandshake != null" >
+        f_terminal_server_handshake = #{fTerminalServerHandshake,jdbcType=TINYINT},
+      </if>
+      <if test="fAudioCallbackTrigger != null" >
+        f_audio_callback_Trigger = #{fAudioCallbackTrigger,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where f_id = #{fId,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="cn.wtu.broadcast.openapi.model.BDeviceConfig" >
+    update b_device_config
+    set f_device_id = #{fDeviceId,jdbcType=INTEGER},
+      f_fm_receive_rate = #{fFmReceiveRate,jdbcType=VARCHAR},
+      f_tv_mode = #{fTvMode,jdbcType=TINYINT},
+      f_tv_frequency = #{fTvFrequency,jdbcType=VARCHAR},
+      f_qam_method = #{fQamMethod,jdbcType=TINYINT},
+      f_default_volume = #{fDefaultVolume,jdbcType=VARCHAR},
+      f_broadcast_timeout = #{fBroadcastTimeout,jdbcType=VARCHAR},
+      f_data_backhaulip_address1 = #{fDataBackhaulipAddress1,jdbcType=VARCHAR},
+      f_data_backhaulip_port1 = #{fDataBackhaulipPort1,jdbcType=VARCHAR},
+      f_audio_backhaul_address1 = #{fAudioBackhaulAddress1,jdbcType=VARCHAR},
+      f_audio_backhaul_port1 = #{fAudioBackhaulPort1,jdbcType=VARCHAR},
+      f_data_backhaulip_address2 = #{fDataBackhaulipAddress2,jdbcType=VARCHAR},
+      f_data_backhaulip_port2 = #{fDataBackhaulipPort2,jdbcType=VARCHAR},
+      f_audio_backhaul_address2 = #{fAudioBackhaulAddress2,jdbcType=VARCHAR},
+      f_audio_backhaul_port2 = #{fAudioBackhaulPort2,jdbcType=VARCHAR},
+      f_logicalarea_code = #{fLogicalareaCode,jdbcType=VARCHAR},
+      f_network_mode = #{fNetworkMode,jdbcType=BIT},
+      f_ip_address = #{fIpAddress,jdbcType=BIT},
+      f_mask = #{fMask,jdbcType=VARCHAR},
+      f_default_gateway = #{fDefaultGateway,jdbcType=VARCHAR},
+      f_audio_callback_protocol = #{fAudioCallbackProtocol,jdbcType=TINYINT},
+      f_terminal_server_handshake = #{fTerminalServerHandshake,jdbcType=TINYINT},
+      f_audio_callback_Trigger = #{fAudioCallbackTrigger,jdbcType=VARCHAR}
+    where f_id = #{fId,jdbcType=INTEGER}
+  </update>
+</mapper>

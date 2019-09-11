@@ -1,0 +1,601 @@
+package cn.wtu.broadcast.openapi.thread;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Iterator;
+import java.util.List;
+import java.util.TimeZone;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import cn.wtu.broadcast.openapi.api.BBroadcastDataService;
+import cn.wtu.broadcast.openapi.util.TCRC32;
+import cn.wtu.broadcast.openapi.util.UDPUtil;
+import cn.wtu.broadcast.parent.enums.BroadcastStateEnum;
+import cn.wtu.broadcast.parent.utils.FfmpegUtil;
+import cn.wtu.broadcast.parent.utils.sign.SignatureData;
+import cn.wtu.broadcast.parent.vo.IpVO;
+
+public class SendIPThread implements Runnable {
+
+	public static Logger logger = LoggerFactory.getLogger(SendIPThread.class);
+
+	/**
+	 * 1:开启身份心跳IP播发处理线程(永久开启) 2:开启音频发送线程
+	 */
+	private int threadType;
+
+	/**
+	 * 平台资源编码 对应 配置表 t_system_configuration的资源编码
+	 */
+	private String platformResourceCode;
+
+	/**
+	 * 县平台证书私钥 32位从数据库中查询出来的
+	 */
+	private String privateKey;
+
+	/**
+	 * 每个设备的连接
+	 */
+	private Socket accept;
+
+	/**
+	 * 音频发送时候需要用到的处理
+	 */
+	private IpVO sendIpvo;
+
+	private String ipServerIP;
+	/**
+	 * 用于修改广播状态
+	 */
+	private BBroadcastDataService broadcastService;
+
+	/**
+	 * 时区
+	 */
+	private String timeZone;
+
+	/**
+	 * 页面播放广播列表，点击页面后添加到缓存中
+	 */
+	public static List<IpVO> waitSendList = new ArrayList<IpVO>();
+
+	public SendIPThread(int threadType, Socket accept, String platformResourceCode, String privateKey,
+			String ipServerIP, String timeZone) {
+		this.threadType = threadType;
+		this.accept = accept;
+		this.platformResourceCode = platformResourceCode;
+		this.privateKey = privateKey;
+		this.ipServerIP = ipServerIP;
+		this.timeZone = timeZone;
+	}
+
+	public SendIPThread(int threadType, IpVO sendIpvo, BBroadcastDataService broadcastService) {
+		this.threadType = threadType;
+		this.sendIpvo = sendIpvo;
+		this.broadcastService = broadcastService;
+	}
+
+	@Override
+	public synchronized void run() {
+
+		// 每个设备建立一个线程，心跳和身份认证的的应答
+		if (threadType == 1) {
+			try {
+				InputStream inputStream = accept.getInputStream();
+				DeviceControlThread deviceControlThread = null;
+				while (true) {
+					if(accept != null && !accept.isClosed()){
+						byte[] b = new byte[1024];
+						inputStream.read(b);
+						String answer = UDPUtil.byteToHex(b);
+						OutputStream outputStream = accept.getOutputStream();
+						if ("8888".equals(answer.substring(0, 4))) {
+							currentHeartAnswer(outputStream);
+							continue;
+						}
+
+						// 设备断开连接的时候，退出设备的心跳等处理
+						if ("0000".equals(answer.substring(0, 4))) {
+							break;
+						}
+						// 业务数据类型
+						String serviceType = answer.substring(46, 48);
+						// 若为心跳，则回复一般应答
+						if ("10".equals(serviceType)) {
+							heartControl(outputStream, answer, platformResourceCode, privateKey, timeZone);
+							// 第一次身份认证进来时候开启播发和停播的子线程
+							if (deviceControlThread == null) {
+								logger.error("设备{}开启播发和停播的子线程", answer.substring(24, 42));
+								deviceControlThread = new DeviceControlThread(answer, accept);
+								new Thread(deviceControlThread).start();
+							}
+						}
+
+						// "30" 身份认证请求标识 "01"表示客户端请求标志
+						if ("30".equals(serviceType) && answer.substring(16, 18).equals("01")) {
+							authenticationControl(outputStream, answer, platformResourceCode, privateKey, timeZone);
+						}
+						// ip话筒
+						if (("49").equals(answer.substring(0, 2))) {
+							ipMikeAnswer(outputStream, ipServerIP, "6008", "501"); // TODO 6008端口  501pid 暂时写死
+						}
+					} else {
+						logger.error("当前线程的Socket已经正常关闭，结束IP播发主线程");
+						break;
+					}
+				}
+			} catch (Exception e) {
+				logger.error("心跳身份认证等处理报异常：" + e.getMessage() + e);
+			}
+		} else if (threadType == 2) {
+			// IP广播时候才更新数据库
+			if(sendIpvo.getPlayType() == null){
+				// 更新广播数据表中的状态为正在播放 同时加入的待播放的数据表中
+				broadcastService.setStateByFid(Integer.parseInt(sendIpvo.getfId()),
+						BroadcastStateEnum.broadcasting.getCode());
+			}
+			try {
+				if(sendIpvo.getPlayType() == null){
+					FfmpegUtil.play(sendIpvo);
+				} else if(sendIpvo.getPlayType() == 2){
+					// 图文播放视频 TODO
+					FfmpegUtil.playVideo(sendIpvo);
+				}				
+			} catch (Exception e) {
+				logger.error("IP指令音频发送发送异常：" + e.getMessage() + e);
+			}
+			// 删除缓存数据，代表该广播已经播发完毕，用于发送过该广播开播指令设备的停播处理
+			Iterator<IpVO> iterator = waitSendList.iterator();
+			synchronized (iterator) {
+				while (iterator.hasNext()) {
+					IpVO ipVO = iterator.next();
+					// 如果播放列表中对应广播数据已经没有了，证明已经播放完成了，开始执行停播指令
+					if (ipVO.getfId().equals(sendIpvo.getfId())) {
+						iterator.remove();
+					}
+				}
+			}
+			if(sendIpvo.getPlayType() == null){
+				// 更新广播数据表中的状态为播放结束 同时删除待播放列表中的相关数据
+				broadcastService.setStateByFid(Integer.parseInt(sendIpvo.getfId()),
+						BroadcastStateEnum.broadcasted.getCode());
+				logger.info("广播{}正常播放完成, 状态更新为{}", sendIpvo.getfId(), BroadcastStateEnum.broadcasted.getCode());
+			}
+		}
+	}
+
+	/**
+	 * 自己检查是否调控服务器正常，用于更新对应的相关表数据
+	 */
+	private void currentHeartAnswer(OutputStream outputStream) {
+		try {
+			outputStream.write(UDPUtil.hexToByte("8888"));
+		} catch (IOException e) {
+			logger.error(e.getMessage() + e);
+		}
+	}
+
+	/**
+	 * ip话筒
+	 * 
+	 * @param serviceIp
+	 * @param tsPort
+	 * @param pid
+	 */
+	private void ipMikeAnswer(OutputStream outputStream, String serviceIp, String tsPort, String pid) {
+		StringBuilder body = new StringBuilder();
+		System.out.println(serviceIp);
+		body.append("00000000");
+		String url = "distribution:TS," + serviceIp + ":" + tsPort + "," + pid;
+		String asciiUrl = UDPUtil.stringToAscii(url);
+		int ascLen = asciiUrl.length();
+		String len = addZeroForNum(Integer.toHexString(ascLen / 2), 8);
+		body.append(len).append(asciiUrl);
+		// 给客户端发送消息
+		try {
+			outputStream.write(UDPUtil.hexToByte(body.toString()));
+			logger.info("ip话筒回应发送成功:" + body.toString());
+		} catch (IOException e) {
+			logger.error(e.getMessage() + e);
+		}
+	}
+
+	/**
+	 * 字符串补0操作
+	 * 
+	 * @param str
+	 * @param strLength
+	 * @return
+	 */
+	public static String addZeroForNum(String str, int strLength) {
+		int strLen = str.length();
+		if (strLen < strLength) {
+			while (strLen < strLength) {
+				StringBuffer sb = new StringBuffer();
+				sb.append("0").append(str);// 左补0
+				str = sb.toString();
+				strLen = str.length();
+			}
+		}else if(strLen > strLength){
+			str = str.substring(0,4);
+		}
+
+		return str;
+	}
+	/**
+	 * 身份认证应答响应处理
+	 * 
+	 * @param answer
+	 * @param ipvo
+	 */
+	private void authenticationControl(OutputStream outputStream, String answer, String platformResourceCode, String privateKey, String timeZone) {
+		StringBuilder body = new StringBuilder();
+		// 设备资源编码
+		String resourceCode = answer.substring(24, 42);
+		// 业务数据类型
+		String serviceType = answer.substring(46, 48);
+		// 缺少数据包长度,后面会加上
+		String head = getAskHead(answer);
+		StringBuilder allData = new StringBuilder(head);
+		List<String> obj = new ArrayList<String>();
+		obj.add(resourceCode);
+		String sendData = answerToDevice();
+		// body头部+业务数据长度+业务数据
+		body.append(getBody(platformResourceCode, obj, serviceType) + sendData);
+		String totalSize = getRealLenth(Integer.toHexString(head.length() / 2 + body.length() / 2 + 12 + 64 + 6));
+		// true标识要签名
+		String tail = tail(head, body.toString(), true, privateKey, timeZone);
+		allData.append(totalSize).append(body).append(tail);
+		// 给客户端发送消息
+		try {
+			outputStream.write(UDPUtil.hexToByte(allData.toString()));
+			logger.info("身份认证发送成功:" + allData.toString());
+		} catch (IOException e) {
+			logger.error(e.getMessage() + e);
+		}
+	}
+
+	/**
+	 * 心跳应答响应处理
+	 * 
+	 * @param answer
+	 */
+	private void heartControl(OutputStream outputStream, String answer, String platformResourceCode, String privateKey, String timeZone) {
+		// 设备资源编码
+		String resourceCode = answer.substring(24, 42);
+		// 业务数据类型
+		String serviceType = answer.substring(46, 48);
+		// 缺少数据包长度,后面会加上
+		String head = getAskHead(answer);
+		String sendData = heartAnswer(timeZone);
+		StringBuilder heartBody = new StringBuilder();
+		List<String> obj = new ArrayList<String>();
+		obj.add(resourceCode);
+		// body头部+业务数据长度+业务数据
+		heartBody.append(getBody(platformResourceCode, obj, serviceType) + sendData);
+		String totalSize = getRealLenth(Integer.toHexString(head.length() / 2 + heartBody.length() / 2 + 6));
+		String tail = tail(head, heartBody.toString(), false, privateKey, timeZone);
+		StringBuilder heartData = new StringBuilder(head);
+		heartData.append(totalSize).append(heartBody).append(tail);
+		// 给客户端发送消息
+		try {
+			outputStream.write(UDPUtil.hexToByte(heartData.toString()));
+			/*
+			 * String a = testName(answer,1,privateKey);
+			 * outputStream.write(UDPUtil.hexToByte(a));
+			 * logger.info("参数查询指令发送成功:" + a.toString()); byte[] b2 = new
+			 * byte[1024]; inputStream.read(b2); String answer1 =
+			 * UDPUtil.byteToHex(b2); logger.info("参数查询指令设备回复:" + answer1);
+			 */
+			logger.info("心跳数据:" + answer.toString());
+			logger.info("心跳回复发送成功:" + heartData.toString());
+		} catch (IOException e) {
+			logger.error(e.getMessage() + e);
+		}
+	}
+
+	/**
+	 * 例如061245140210220301
+	 * 
+	 * @return
+	 */
+	private static String heartAnswer(String timeZone) {
+		StringBuilder body = new StringBuilder();
+		// 应答结果 00成功
+		body.append("00");
+		// 结果描述长度为
+		body.append("0004");
+		List<String> privateKeys = new ArrayList<String>();
+		SignatureData signatureData = new SignatureData(privateKeys);
+		logger.info("时区设置=" + timeZone);
+		Calendar cal = Calendar.getInstance();
+		if (Integer.parseInt(timeZone) == 0) {
+			// cal.setTimeZone(TimeZone.getDefault());
+
+			// 获得时区和 GMT-0 的时间差,偏移量
+			int offset = cal.get(Calendar.ZONE_OFFSET);
+			// 获得夏令时 时差
+			int dstoff = cal.get(Calendar.DST_OFFSET);
+			cal.add(Calendar.MILLISECOND, (offset + dstoff));
+		} else if (Integer.parseInt(timeZone) == 1) {
+			cal.setTimeZone(TimeZone.getDefault());
+		}
+		byte[] random = signatureData.calendar2Bytes(cal);
+		logger.info("时间为" + UDPUtil.byteToHex(random));
+		String UTC = UDPUtil.byteToHex(random);
+		// 加上UTC时间
+		body.append(UTC);
+		body.insert(0, getRealLenth(Integer.toHexString(body.length() / 2)));
+		return body.toString();
+	}
+
+	/**
+	 * 获取serviceType 例如061245140210220301
+	 * 
+	 * @return
+	 */
+	private static String answerToDevice() {
+		StringBuilder body = new StringBuilder();
+		// 应答结果 00成功
+		body.append("00");
+		// 结果描述长度为0
+		body.append("0000");
+		logger.info("业务数据长度：" + (Integer.toHexString(body.length() / 2)));
+		// 业务数据类容长度
+		body.insert(0, getRealLenth(Integer.toHexString(body.length() / 2)));
+		// 42为消息体前面内容长度 数据源对象编码9 + 数据目标对象数量2 + 数据目标对象编码序列9*1 +业务数据类型1
+		logger.info("身份认证应答业务数据" + body.toString());
+		return body.toString();
+	}
+
+	/**
+	 * 封装请求头部
+	 * 
+	 * @param version 版本号
+	 * @param talkTag 会话标记，如果是主动请求记得要加1，如果是回复直接取回复的标记即可
+	 * @param askOrAnswer 01请求 02应答
+	 * @param isSign 是否签名 00：否 01：是
+	 * @return
+	 */
+	private static String getAskHead(String answer) {
+		// "02"代表回复身份认证应答
+		String askOrAnswer = "02";
+		// 会话标记
+		String talkTag = answer.substring(8, 16);
+		// 获取签名标志
+		String isSign = answer.substring(18, 20);
+		// 协议类型 例如0200
+		String protocol = answer.substring(4, 8);
+		// 缺少数据包长度,后面会加上
+		String head = "fefd" + protocol + talkTag + askOrAnswer + isSign;
+		return head;
+	}
+
+	/**
+	 * body部分 后面还需加上 业务数据长度 + 业务数据内容
+	 * 
+	 * @param senderCode
+	 * @param objsCode
+	 * @param serviceType
+	 * @return
+	 */
+	public static String getBody(String senderCode, List<String> objsCode, String serviceType) {
+		StringBuilder sb = new StringBuilder(senderCode);
+		sb.append("" + getRealLenth("" + objsCode.size()));
+		for (String i : objsCode) {
+			sb.append(i);
+		}
+		// 业务数据类型 30身份认证 01开播 12参数设置
+		sb.append(serviceType);
+		return sb.toString();
+	}
+
+	/**
+	 * 获取签名后的数据
+	 * 
+	 * @param head
+	 * @param body
+	 * @param isSign
+	 * @param privateKey
+	 * @return
+	 */
+	public static String tail(String head, String body, boolean isSign, String privateKey, String timeZoneSet) {
+		String tail = "";
+		if (isSign) {
+			StringBuilder dataForSign = new StringBuilder(head);
+			String totalSize = getRealLenth(Integer.toHexString(head.length() / 2 + body.length() / 2 + 12 + 64 + 6));
+			dataForSign.append(totalSize).append(body);
+
+			List<String> privateKeys = new ArrayList<String>();
+			privateKeys.add(privateKey);
+			SignatureData signatureData = new SignatureData(privateKeys);
+			/**
+			 * 0-local 1-UTC lxg 2019-04-04
+			 */
+			Calendar cal = Calendar.getInstance();
+			if (Integer.parseInt(timeZoneSet) == 0) {
+				// 获得时区和 GMT-0 的时间差,偏移量
+				int offset = cal.get(Calendar.ZONE_OFFSET);
+				// 获得夏令时 时差
+				int dstoff = cal.get(Calendar.DST_OFFSET);
+				cal.add(Calendar.MILLISECOND, (offset + dstoff));
+
+			} else if (Integer.parseInt(timeZoneSet) == 1) {
+				cal.setTimeZone(TimeZone.getDefault());
+			}
+			byte[] random = signatureData.calendar2Bytes(cal);
+			signatureData.random = random;
+
+			signatureData.setSrcData(UDPUtil.hexToByte(dataForSign.toString()));
+			byte[] signData = signatureData.convertToBytes();
+			// 签名时间 + 证书编号 +签名
+			tail += UDPUtil.byteToHex(signData);
+			// 验证数据加上长度
+			tail = getRealLenth(Integer.toHexString(tail.length() / 2)) + tail;
+			StringBuilder all = new StringBuilder(head);
+			all.append(totalSize).append(body).append(tail);
+			int calculate = TCRC32.crc_Calculate(UDPUtil.hexToByte(all.toString()), 0,
+					UDPUtil.hexToByte(all.toString()).length);
+			String hex32 = addZeroForNum(Integer.toHexString(calculate), 8);
+			tail += hex32;
+		} else {
+			StringBuilder all = new StringBuilder(head);
+			String totalSize = getRealLenth(Integer.toHexString(head.length() / 2 + body.length() / 2 + 6));
+			all.append(totalSize).append(body);
+			int calculate = TCRC32.crc_Calculate(UDPUtil.hexToByte(all.toString()), 0,
+					UDPUtil.hexToByte(all.toString()).length);
+			String hex32 = addZeroForNum(Integer.toHexString(calculate), 8);
+			tail += hex32;
+		}
+		return tail;
+	}
+
+	/**
+	 * 获取签名后的数据
+	 * 
+	 * @param head
+	 * @param body
+	 * @param isSign
+	 * @param privateKey
+	 * @return
+	 */
+	public static String tail(String head, String body, boolean isSign, String privateKey) {
+		String tail = "";
+		if (isSign) {
+			StringBuilder dataForSign = new StringBuilder(head);
+			String totalSize = getRealLenth(Integer.toHexString(head.length() / 2 + body.length() / 2 + 12 + 64 + 6));
+			dataForSign.append(totalSize).append(body);
+
+			List<String> privateKeys = new ArrayList<String>();
+			privateKeys.add(privateKey);
+			SignatureData signatureData = new SignatureData(privateKeys);
+			Calendar calendar = Calendar.getInstance();
+			calendar.setTimeZone(TimeZone.getTimeZone("GMT"));
+			byte[] random = signatureData.calendar2Bytes(calendar);
+			signatureData.random = random;
+
+			signatureData.setSrcData(UDPUtil.hexToByte(dataForSign.toString()));
+			byte[] signData = signatureData.convertToBytes();
+			// 签名时间 + 证书编号 +签名
+			tail += UDPUtil.byteToHex(signData);
+			// 验证数据加上长度
+			tail = getRealLenth(Integer.toHexString(tail.length() / 2)) + tail;
+			StringBuilder all = new StringBuilder(head);
+			all.append(totalSize).append(body).append(tail);
+			int calculate = TCRC32.crc_Calculate(UDPUtil.hexToByte(all.toString()), 0,
+					UDPUtil.hexToByte(all.toString()).length);
+			String hex32 = addZeroForNum(Integer.toHexString(calculate), 8);
+			tail += hex32;
+		} else {
+			StringBuilder all = new StringBuilder(head);
+			String totalSize = getRealLenth(Integer.toHexString(head.length() / 2 + body.length() / 2 + 6));
+			all.append(totalSize).append(body);
+			int calculate = TCRC32.crc_Calculate(UDPUtil.hexToByte(all.toString()), 0,
+					UDPUtil.hexToByte(all.toString()).length);
+			String hex32 = addZeroForNum(Integer.toHexString(calculate), 8);
+			tail += hex32;
+		}
+		return tail;
+	}
+
+	/**
+	 * 前面补0操作，满足2字节要求
+	 * 
+	 * @param len
+	 * @return
+	 */
+	public static String getRealLenth(String len) {
+		if (len != null) {
+			if (len.length() == 1) {
+				return "000" + len;
+			} else if (len.length() == 2) {
+				return "00" + len;
+			} else if (len.length() == 3) {
+				return "0" + len;
+			}
+		}
+
+		return len;
+	}
+
+	public String testName(String answer, int talkTag1, String privateKey) {
+		// head部分
+		// "01"请求
+		String askOrAnswer = "01";
+		// 会话标记
+		String talkTag = addZeroForNum(Integer.toString(talkTag1), 8);
+		// 获取签名标志
+		String isSign = "01";
+		// 协议类型 例如0200
+		String protocol = answer.substring(4, 8);// "0200";
+		// 缺少数据包长度,后面会加上
+		String head = "fefd" + protocol + talkTag + askOrAnswer + isSign;
+
+		// body部分
+		String platForm = "010345108100000001"; // 平台编码
+		String objCounts = "0001";
+		String objCode = "061245140210220301"; // 设备资源码
+
+		String serviceType = "11"; // 12 终端参数配置
+
+		String serviceDataLen = "";
+
+		// 业务数据
+		StringBuilder sb = new StringBuilder();
+		// 要查询的参数个数
+		int paramCounts = 0;
+		if (true) {
+			// sb.append("01");
+			paramCounts++;
+			sb.append("0004"); // 参数编码
+		}
+		if (true) {
+			// sb.append("01");
+			paramCounts++;
+			sb.append("0104"); //
+		}
+		if (true) {
+			// sb.append("01");
+			paramCounts++;
+			sb.append("0204"); //
+		}
+		if (true) {
+			// sb.append("01");
+			paramCounts++;
+			sb.append("0304"); //
+		}
+		if (true) {
+			// sb.append("01");
+			paramCounts++;
+			sb.append("0404"); //
+		}
+		if (true) {
+			// sb.append("01");
+			paramCounts++;
+			sb.append("0504"); //
+		}
+		if (true) {
+			// sb.append("01");
+			paramCounts++;
+			sb.append("0604"); //
+		}
+
+		sb.insert(0, addZeroForNum("" + paramCounts, 2));
+		serviceDataLen = addZeroForNum(Integer.toHexString(sb.length() / 2), 4);
+		String body = platForm + objCounts + objCode + serviceType + serviceDataLen + sb.toString();
+
+		String totalLen = addZeroForNum(Integer.toHexString(head.length() / 2 + body.length() / 2 + 12 + 64 + 6), 4);
+		StringBuilder allData = new StringBuilder(head);
+		// UTC时间
+		String tail = SendIPThread.tail(head, body.toString(), true, privateKey);
+		allData.append(totalLen).append(body).append(tail);
+		return allData.toString();
+	}
+}

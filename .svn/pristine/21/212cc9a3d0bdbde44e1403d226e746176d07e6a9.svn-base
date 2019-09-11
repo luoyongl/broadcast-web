@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cn.wtu.broadcast.openapi.dao.extend.TSystemConfigurationExtMapper">
+
+	<select id="getConfiguration" resultType="cn.wtu.broadcast.parent.vo.EBCONTParamsVO">
+	  select
+	   (SELECT f_configuration_value FROM t_system_configuration WHERE f_configuration_name="private_key")  AS privateKey,
+	   (SELECT f_configuration_value FROM t_system_configuration WHERE f_configuration_name="dtmb_adapter_ip")  AS dtmbAdapterIp,
+	   (SELECT f_configuration_value FROM t_system_configuration WHERE f_configuration_name="dtmb_adapter_port")  AS dtmbAdapterPort,
+       (SELECT f_configuration_value FROM t_system_configuration WHERE f_configuration_name="dvbc_adapter_ip")  AS dvbcAdapterIp,
+       (SELECT f_configuration_value FROM t_system_configuration WHERE f_configuration_name="dvbc_adapter_port")  AS dvbcAdapterPort
+	</select>
+	
+	<select id="getPictureAdsConfiguration" resultType="cn.wtu.broadcast.parent.vo.IpVO">
+	  select
+	   (SELECT f_configuration_value FROM t_system_configuration WHERE f_configuration_name="private_key")  AS privateKey,
+	   (SELECT f_configuration_value FROM t_system_configuration WHERE f_configuration_name="platform_resource_code")  AS platformResourceCode,
+	   (SELECT f_configuration_value FROM t_system_configuration WHERE f_configuration_name="unicast_port")  AS ipPlayPort,
+       (SELECT f_configuration_value FROM t_system_configuration WHERE f_configuration_name="multicast_ip")  AS serviceIp,
+       (SELECT f_configuration_value FROM t_system_configuration WHERE f_configuration_name="timeZone_set")  AS timeZoneSet
+	</select>
+</mapper>

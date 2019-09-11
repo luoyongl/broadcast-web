@@ -1,0 +1,239 @@
+package cn.wtu.broadcast.parent.utils;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+
+import cn.wtu.broadcast.parent.constant.Constant;
+import cn.wtu.broadcast.parent.enums.BroadcastTypeKeyEnum;
+import cn.wtu.broadcast.parent.vo.EBITParamsVO;
+import cn.wtu.broadcast.parent.vo.IpVO;
+
+/**
+ * 用于执行linux命令 实现ffmpeg音频转码功能 sourceUrl表示音频来源 采用UDP方式组播出去
+ * 
+ * @author lxg
+ * @since 2019-01-25 前提:linux环境安装有ffmpeg的环境并配置有系统环境 才能调用ffmpeg命令
+ */
+public class FfmpegUtil {
+	private static Logger logger = LoggerFactory.getLogger(FfmpegUtil.class);
+	
+    @Value("${upload.prefix.url}")
+    private static String uploadPrefixUrl;
+
+	public static void Mp32TS(EBITParamsVO paramsVO, String broadcastType) throws Exception {
+		String audioUrl = null;
+		if (paramsVO.getTextToAudioUrl() != null && StringUtils.isNotBlank(paramsVO.getTextToAudioUrl())) {
+			// 文本转语音
+			audioUrl = paramsVO.getTextToAudioUrl();
+		} else {
+			audioUrl = paramsVO.getAudioUrl();
+		}
+		//E:/ffmpeg-20190120-62f8d27-win64-static/bin/ffmpeg.exe
+		// -acodec copy -vn mp3文件去除图片格式 -pkt_size 1316 保留
+		String command = "ffmpeg -re -stream_loop 0 -i " + audioUrl
+				+ " -acodec copy -vn -mpegts_original_network_id 1 " + " -mpegts_transport_stream_id 1 "
+				+ " -mpegts_service_id 1 " + "  -f mpegts -mpegts_start_pid " + paramsVO.getElementary_PID()
+				+ " -metadata service_provider='博远智家' " + " -metadata service_name='应急广播测试' -pkt_size 1316 "
+				+ " udp://";
+
+		if (broadcastType.equals(BroadcastTypeKeyEnum.DVBC.getDesc())) {
+			command += paramsVO.getDvbcAdapterIp() + ":" + paramsVO.getDvbcAdapterPort();
+		} else if (broadcastType.equals(BroadcastTypeKeyEnum.DTMB.getDesc())) {
+			command += paramsVO.getDtmbAdapterIp() + ":" + paramsVO.getDtmbAdapterPort();
+		}
+
+		Process process = Runtime.getRuntime().exec(command);
+		// 保存该进程到集合中，后续停播需要用到(同一广播ID包括DVBC和DTMB的进程)
+		List<Process> processList = Constant.tsAudioProcessMap.get(String.valueOf(paramsVO.getfId()));
+		if (processList == null) {
+			processList = new ArrayList<Process>();
+		}
+		processList.add(process);
+		Constant.tsAudioProcessMap.put(String.valueOf(paramsVO.getfId()), processList);
+		dealStream(process);
+		process.waitFor(); // 加上这句，系统会等待转换完成。不加，就会在服务器后台自行转换。
+		logger.info("21包{}的音频PID{}正常播放完成", paramsVO.getfId() + broadcastType, paramsVO.getElementary_PID());
+	}
+
+	/**
+	 * 处理process输出流和错误流，防止进程阻塞 在process.waitFor();前调用
+	 * 
+	 * @param process
+	 */
+	private static void dealStream(Process process) {
+		if (process == null) {
+			return;
+		}
+		// 处理InputStream的线程
+		new Thread() {
+			@Override
+			public void run() {
+				BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+				String line = null;
+				try {
+					while ((line = in.readLine()) != null) {
+						logger.info("output: " + line);
+					}
+				} catch (IOException e) {
+					logger.error(e.getMessage() + e);
+				} finally {
+					try {
+						in.close();
+					} catch (IOException e) {
+						logger.error(e.getMessage() + e);
+					}
+				}
+			}
+		}.start();
+		// 处理ErrorStream的线程
+		new Thread() {
+			@Override
+			public void run() {
+				BufferedReader err = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+				String line = null;
+				try {
+					while ((line = err.readLine()) != null) {
+						logger.info("err: " + line);
+					}
+				} catch (IOException e) {
+					logger.error(e.getMessage() + e);
+				} finally {
+					try {
+						err.close();
+					} catch (IOException e) {
+						logger.error(e.getMessage() + e);
+					}
+				}
+			}
+		}.start();
+	}		
+	//    /usr/bin/cvlc /usr/local/22.mp3 --sout '#standard{mux=ts{pid-audio=4112},access=http,dst=:8081/vlc}' --sout-all --sout-keep
+	public static void play(IpVO sendIpvo) throws IOException, InterruptedException {
+		Integer broadcastId = Integer.valueOf(sendIpvo.getfId());
+		String clientIp = sendIpvo.getServiceIp();
+		String audioUrl = null;
+		if (sendIpvo.getBroadcastAudioUrl() != null) {
+			audioUrl = sendIpvo.getBroadcastAudioUrl();
+		} else if (sendIpvo.getTextToAudioUrl() != null) {
+			audioUrl = sendIpvo.getTextToAudioUrl();
+		}
+		String ipPlayPort = sendIpvo.getIpPlayPort();
+		String broadcastTomcatPath = sendIpvo.getBroadcastTomcatPath();
+		Integer audioPid = hexToTen(sendIpvo.getAudioPid());
+		String audioName = audioUrl.substring(audioUrl.lastIndexOf("/")+1);
+		if(broadcastTomcatPath == null || "".equalsIgnoreCase(broadcastTomcatPath)){
+			broadcastTomcatPath = "/usr/local/apache-tomcat-8.5.6-broadcast-web";
+		}
+		//	/usr/bin/cvlc /usr/local/apache-tomcat-8.5.6-broadcast-web/webapps/ROOT/upload/audio/3a5400b5-b164-45b3-8bc0-7952ff4aa653.mp4 --sout '#standard{mux=ffmpeg{mux=flv,pid-audio=4112},access=http,dst=:8088/vlc}' --play-and-exit
+		//http--使用
+		String command2 = "/usr/bin/cvlc "+ broadcastTomcatPath + "/webapps/ROOT/upload/audio/"+ audioName + " -vv -I dummy --sout '#standard{mux=ts{pid-audio=" + audioPid + "},access=http,dst=" + clientIp + ":"+ipPlayPort+"/vlc}' --play-and-exit";
+		
+		
+		//String command2 = "/usr/bin/cvlc "+ broadcastTomcatPath + "/webapps/ROOT/upload/audio/"+audio[5] + " -vv --sout '#standard{mux=ffmpeg{mux=flv,pid-audio=4112},access=http,dst=" + clientIp + ":"+ipPlayPort+"/vlc}' --play-and-exit";
+		// rtsp方式	/usr/bin/cvlc /usr/local/22.mp3 -vv --sout=#rtp{sdp=rtsp://:8088/vlc} --sout-keep --play-and-exit
+		//String command2 = "/usr/bin/cvlc "+ broadcastTomcatPath + "/webapps/ROOT/upload/audio/"+audioName + " -vv -I dummy --sout=#rtp{sdp=rtsp://" + clientIp + ":"+ipPlayPort+"/vlc} --play-and-exit";
+		String[] cmd = new String[]{"sh","-c",command2};
+		System.out.println(command2);
+		Process process = Runtime.getRuntime().exec(cmd);
+		// 保存该进程到集合中，后续停播需要用到
+		List<Process> processList = Constant.tsAudioProcessMap.get("IP" + broadcastId);
+		if (processList == null) {
+			processList = new ArrayList<Process>();
+		}
+		processList.add(process);
+		Constant.tsAudioProcessMap.put("IP" + broadcastId, processList);
+		dealStream(process);
+		process.waitFor(); // 加上这句，系统会等待转换完成。不加，就会在服务器后台自行转换。
+		logger.info("广播{}的音频PID{}正常播放完成", broadcastId, audioUrl);
+	}
+
+	public static void playVideo(IpVO sendIpvo) throws IOException, InterruptedException {
+		String  broadcastId = sendIpvo.getfId();
+		String clientIp = sendIpvo.getServiceIp();
+		String audioUrl = null;
+		if (sendIpvo.getIpVideoVO().getBroadcastAudioUrl() != null) {
+			audioUrl = sendIpvo.getIpVideoVO().getBroadcastAudioUrl();
+		} 
+		String ipPlayPort = sendIpvo.getIpPlayPort();
+		String broadcastTomcatPath = sendIpvo.getBroadcastTomcatPath();
+		Integer audioPid = hexToTen(sendIpvo.getAudioPid());
+		String audioName = audioUrl.substring(audioUrl.lastIndexOf("/")+1);
+		if(broadcastTomcatPath == null || "".equalsIgnoreCase(broadcastTomcatPath)){
+			broadcastTomcatPath = "/usr/local/apache-tomcat-8.5.6-broadcast-web";
+		}
+		
+		//	/usr/bin/cvlc /usr/local/apache-tomcat-8.5.6-broadcast-web/webapps/ROOT/upload/audio/3a5400b5-b164-45b3-8bc0-7952ff4aa653.mp4 --sout '#standard{mux=ffmpeg{mux=flv},access=http,dst=:8088/vlc}' --play-and-exit
+		String command2 = "/usr/bin/cvlc "+ broadcastTomcatPath + "/webapps/ROOT/upload/other/"+ audioName + " -vv --sout '#standard{mux=ffmpeg{mux=flv,pid-audio="+audioPid+"},access=http,dst=" + clientIp + ":"+ipPlayPort+"/video}' --play-and-exit --sout-keep --sout-all";
+		String[] cmd = new String[]{"sh","-c",command2};
+		logger.info(command2);
+		Process process = Runtime.getRuntime().exec(cmd);
+		// 保存该进程到集合中，后续停播需要用到
+		List<Process> processList = Constant.tsAudioProcessMap.get("IP" + broadcastId);
+		if (processList == null) {
+			processList = new ArrayList<Process>();
+		}
+		processList.add(process);
+		Constant.tsAudioProcessMap.put("IP" + broadcastId, processList);
+		dealStream(process);
+		process.waitFor(); // 加上这句，系统会等待转换完成。不加，就会在服务器后台自行转换。
+		logger.info("图文视频{}的音频PID{}正常播放完成", broadcastId, audioUrl);
+	}
+
+	public static void playTest(Integer broadcastId) throws IOException, InterruptedException {
+		//lxg 本地 E:/download/vlc/vlc.exe
+		String command1 = "D:/vlc/vlc.exe C:\\Users\\admin\\Desktop\\22.mp3 --sout=#http{mux=ts{pid-audio=4112},dst=:8088/vlc} --sout-all --sout-keep";
+		Process process = Runtime.getRuntime().exec(command1);
+		// 保存该进程到集合中，后续停播需要用到
+		List<Process> processList = Constant.tsAudioProcessMap.get("IP" + broadcastId);
+		if (processList == null) {
+			processList = new ArrayList<Process>();
+		}
+		processList.add(process);
+		Constant.tsAudioProcessMap.put("IP" + broadcastId, processList);
+		dealStream(process);
+		process.waitFor(); // 加上这句，系统会等待转换完成。不加，就会在服务器后台自行转换。
+	}
+
+	public static void main(String[] args) throws IOException, InterruptedException {
+				
+		hexToTen("0000");
+	}
+    
+	/**
+	 * ts设备升级-发送ts升级文件    http://....   .ts
+	 * @param udtUrlSuffix   还需要加上 http://ip:port/
+	 * 2019-04-09  lxg
+	 */
+	@SuppressWarnings("unused")
+	public	static void sendTsUploadFile(String udtUrlSuffix) {
+		//访问升级文件(.ts)的网络路径
+		String path= uploadPrefixUrl+ udtUrlSuffix;
+	}
+	
+	private static int hexToTen(String s) {
+		int m = 0;
+		for (int i = 0; i < s.length(); i++) {
+			m = 16 * m + getRealValue(s.charAt(i));
+		}
+		return m;
+	}
+	private static int getRealValue(char c) {
+		int n = 0;
+		if (c >= 'a' && c <= 'f')
+			n = c - 'a' + 10;
+		if (c >= 'A' && c <= 'F')
+			n = c - 'A' + 10;
+		if (c >= '0' && c <= '9')
+			n = c - '0';
+		return n;
+	}
+
+}

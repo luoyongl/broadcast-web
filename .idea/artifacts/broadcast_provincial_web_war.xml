@@ -1,0 +1,14 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="broadcast-provincial-web:war">
+    <output-path>$PROJECT_DIR$/broadcast-provincial-web/target</output-path>
+    <properties id="maven-jee-properties">
+      <options>
+        <module>broadcast-provincial-web</module>
+        <packaging>war</packaging>
+      </options>
+    </properties>
+    <root id="archive" name="broadcast-provincial-web-0.0.1-SNAPSHOT.war">
+      <element id="artifact" artifact-name="broadcast-provincial-web:war exploded" />
+    </root>
+  </artifact>
+</component>

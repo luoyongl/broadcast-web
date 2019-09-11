@@ -1,0 +1,372 @@
+package cn.wtu.broadcast.openapi.provider;
+
+import java.io.File;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import cn.wtu.broadcast.openapi.api.AudioPlayService;
+import cn.wtu.broadcast.openapi.api.BBroadcastDataService;
+import cn.wtu.broadcast.openapi.api.BBroadcastDeviceService;
+import cn.wtu.broadcast.openapi.api.BroadcastTempService;
+import cn.wtu.broadcast.openapi.api.IPStreamPackagedService;
+import cn.wtu.broadcast.openapi.api.TAdministrativeDivisionService;
+import cn.wtu.broadcast.openapi.api.TDictionaryService;
+import cn.wtu.broadcast.openapi.api.TSStreamPackagedService;
+import cn.wtu.broadcast.openapi.api.ThirdBroadcastDataService;
+import cn.wtu.broadcast.openapi.dao.extend.TSystemConfigurationExtMapper;
+import cn.wtu.broadcast.openapi.model.BBroadcastDevice;
+import cn.wtu.broadcast.openapi.thread.SendIPThread;
+import cn.wtu.broadcast.openapi.thread.SendTSThread;
+import cn.wtu.broadcast.openapi.util.UDPUtil;
+import cn.wtu.broadcast.parent.enums.BroadcastTypeEnum;
+import cn.wtu.broadcast.parent.enums.BroadcastTypeKeyEnum;
+import cn.wtu.broadcast.parent.pojo.BroadcastResult;
+import cn.wtu.broadcast.parent.vo.EBITParamsVO;
+import cn.wtu.broadcast.parent.vo.IpPictureVO;
+import cn.wtu.broadcast.parent.vo.IpTextVO;
+import cn.wtu.broadcast.parent.vo.IpVO;
+import cn.wtu.broadcast.parent.vo.IpVideoVO;
+
+@Service("audioPlayService")
+public class AudioPlayServiceImpl implements AudioPlayService {
+
+	private static org.slf4j.Logger logger = LoggerFactory.getLogger(AudioPlayServiceImpl.class);
+
+	@Autowired
+	private ThirdBroadcastDataService thirdBroadcastDataService;
+	@Autowired
+	private TSStreamPackagedService tsStreamPackagedService;
+	@Autowired
+	private TDictionaryService tDictionaryService;
+	@Autowired
+	private BBroadcastDataService broadcastService;
+	@SuppressWarnings("unused")
+	@Autowired
+	private IPStreamPackagedService iPStreamPackagedService;
+	@Autowired
+	private BroadcastTempService broadcastTempService;
+	@Autowired
+	private TAdministrativeDivisionService tAdministrativeDivisionService;
+	@Autowired
+	private BBroadcastDeviceService broadcastDeviceService;
+	@Autowired
+	private TSystemConfigurationExtMapper tSystemConfigurationExtMapper;
+
+	/**
+	 * 会话标志(16进制数，协议里面要是四位)
+	 */
+	private static int audioPid = 1000;
+
+	/**
+	 * 音频播放 发送21包数据(索引表和配置表) 及 音频流数据
+	 * 
+	 * @author lxg
+	 * @since 2019/2/19
+	 * @param 广播类型
+	 *            broadcastType,广播ID fId
+	 */
+	@Override
+	public BroadcastResult playAudio(Integer broadcastType, Integer fId) {
+		// 发送设备指令
+		try {
+			EBITParamsVO paramsVO = thirdBroadcastDataService.getModelByBroadcastTypeAndId(broadcastType, fId);
+			if (existHttpPath(paramsVO.getAudioUrl()) || existHttpPath(paramsVO.getTextToAudioUrl())) {
+
+				// 1:开启DVBC发送21包TS流的线程
+				Thread sendDVBC21Ts = new Thread(new SendTSThread(1, BroadcastTypeKeyEnum.DVBC.getDesc(), paramsVO,
+						tsStreamPackagedService, tDictionaryService, broadcastService, broadcastTempService));
+				sendDVBC21Ts.start();
+				// 2：开启DVBC发送音频的线程
+				Thread sendDVBCAudio = new Thread(new SendTSThread(2, BroadcastTypeKeyEnum.DVBC.getDesc(), paramsVO,
+						tsStreamPackagedService, tDictionaryService, broadcastService, broadcastTempService));
+				sendDVBCAudio.start();
+				// 1:开启DTMB发送21包TS流的线程
+				Thread sendDTMB21Ts = new Thread(new SendTSThread(1, BroadcastTypeKeyEnum.DTMB.getDesc(), paramsVO,
+						tsStreamPackagedService, tDictionaryService, broadcastService, broadcastTempService));
+				sendDTMB21Ts.start();
+				// 2：开启DTMB发送音频的线程
+				Thread sendDTMBAudio = new Thread(new SendTSThread(2, BroadcastTypeKeyEnum.DTMB.getDesc(), paramsVO,
+						tsStreamPackagedService, tDictionaryService, broadcastService, broadcastTempService));
+				sendDTMBAudio.start();
+			} else {
+				return BroadcastResult.fail("音频文件不存在,播发失败");
+			}
+		} catch (Exception e) {
+			logger.error(e.getMessage() + e);
+		}
+		return BroadcastResult.ok();
+	}
+
+	/**
+	 * httppath和Url 判断文件是否存在
+	 * 
+	 * @param httpPath
+	 * @return
+	 */
+	private static Boolean existHttpPath(String httpPath) {
+		URL httpurl = null;
+		try {
+			httpurl = new URL(httpPath);
+			URLConnection rulConnection = httpurl.openConnection();
+			rulConnection.getInputStream();
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+	@Override
+	public BroadcastResult ipPlayAudio(Integer broadcastType, Integer fId, String broadcastTomcatPath) { // 这是要改的第二个地方
+		IpVO ipvo = thirdBroadcastDataService.getIpModelByBroadcastTypeAndId(broadcastType, fId);
+		ipvo.setAudioPid(String.valueOf(audioPid++));
+		ipvo.setBroadcastTomcatPath(broadcastTomcatPath);
+		String audioName = null;
+		
+		if (ipvo.getTextToAudioUrl() != null) {
+			audioName = ipvo.getTextToAudioUrl().substring(ipvo.getTextToAudioUrl().lastIndexOf("/") + 1);
+		} else {
+			audioName = ipvo.getBroadcastAudioUrl().substring(ipvo.getBroadcastAudioUrl().lastIndexOf("/") + 1);
+		}
+		/*if (ipvo.getBroadcastAudioUrl() != null) {
+			//audio = ipvo.getBroadcastAudioUrl().split("/");
+			audioName = ipvo.getBroadcastAudioUrl().substring(ipvo.getBroadcastAudioUrl().lastIndexOf("/") + 1);
+		} else if (ipvo.getTextToAudioUrl() != null) {
+			audioName = ipvo.getTextToAudioUrl().substring(ipvo.getTextToAudioUrl().lastIndexOf("/") + 1);
+			//audio = ipvo.getTextToAudioUrl().split("/");
+		}*/
+		String audioUrl = broadcastTomcatPath + "/webapps/ROOT/upload/audio/" + audioName;
+		File file = new File(audioUrl);
+		if (!file.exists()) {
+			logger.error("音频url"+audioUrl);
+			return BroadcastResult.fail("音频文件不存在,播发失败!");
+		}
+
+		// iPStreamPackagedService.sendIPCommand("01", ipvo); //01标识开播
+		SendIPThread.waitSendList.add(ipvo);
+		Thread sendIPThread = new Thread(new SendIPThread(2, ipvo, broadcastService));
+		sendIPThread.start();
+		return BroadcastResult.ok();
+	}
+
+	@Override
+	public BroadcastResult ipPictureVideoPlay(Integer playType, String name, String contentOrUrl, String resourceCodes,
+			String broadcastTomcatPath,String pictureId) {
+		IpVO ipvo = tSystemConfigurationExtMapper.getPictureAdsConfiguration();
+		ipvo.setfId(pictureId);
+		ipvo.setPlayType(playType);
+		ipvo.setBroadcastTomcatPath(broadcastTomcatPath);
+		if (playType == 0) {
+			IpTextVO ipTextVO = new IpTextVO();
+			ipTextVO.setText(contentOrUrl);
+			ipTextVO.setfId(pictureId);
+			// 封装设备资源编码
+			List<String> resourceCodelist = new ArrayList<String>();
+			String[] resourceCode = resourceCodes.split(",");
+			for (String str : resourceCode) {
+				resourceCodelist.add(str);
+			}
+			ipvo.setResourceCodeList(resourceCodelist);
+			ipTextVO.setPlatformResourceCode(ipvo.getPlatformResourceCode());
+			ipTextVO.setPrivateKey(ipvo.getPrivateKey());
+			ipTextVO.setIpPlayPort(ipvo.getIpPlayPort());
+			ipTextVO.setTimeZoneSet(ipvo.getTimeZoneSet());
+			int textLen = getTxtLen(contentOrUrl);
+			String len = SendIPThread.getRealLenth(Integer.toHexString(textLen));
+			ipTextVO.setLen(len);
+			ipvo.setIpTextVO(ipTextVO);
+		} else if (playType == 1) {
+			IpPictureVO ipPictureVO = new IpPictureVO();
+			ipPictureVO.setfId(pictureId);
+			ipPictureVO.setPictureURL(contentOrUrl);
+			// 封装设备资源编码
+			List<String> resourceCodelist = new ArrayList<String>();
+			String[] resourceCode = resourceCodes.split(",");
+			for (String str : resourceCode) {
+				resourceCodelist.add(str);
+			}
+			ipvo.setResourceCodeList(resourceCodelist);
+			ipPictureVO.setPlatformResourceCode(ipvo.getPlatformResourceCode());
+			ipPictureVO.setPrivateKey(ipvo.getPrivateKey());
+			ipPictureVO.setIpPlayPort(ipvo.getIpPlayPort());
+			ipPictureVO.setTimeZoneSet(ipvo.getTimeZoneSet());
+
+			String asciiUrl = UDPUtil.stringToAscii(contentOrUrl);
+			int ascLen = asciiUrl.length();
+			String len = SendIPThread.getRealLenth(Integer.toHexString(ascLen / 2));
+			ipPictureVO.setLen(len);
+			ipvo.setIpPictureVO(ipPictureVO);
+		} else if (playType == 2) {
+			IpVideoVO ipVideoVO = new IpVideoVO();
+			ipVideoVO.setfId(pictureId);
+			ipVideoVO.setBroadcastAudioUrl(contentOrUrl);
+			// 封装设备资源编码
+			List<String> resourceCodelist = new ArrayList<String>();
+			String[] resourceCode = resourceCodes.split(",");
+			for (String str : resourceCode) {
+				resourceCodelist.add(str);
+			}
+			ipvo.setResourceCodeList(resourceCodelist);
+			ipVideoVO.setPlatformResourceCode(ipvo.getPlatformResourceCode());
+			ipVideoVO.setPrivateKey(ipvo.getPrivateKey());
+			ipVideoVO.setIpPlayPort(ipvo.getIpPlayPort());
+			ipVideoVO.setTimeZoneSet(ipvo.getTimeZoneSet());
+
+			/*
+			 * // 查询平台资源编码，私钥， TSystemConfigurationExample
+			 * systemConfigurationExample = new TSystemConfigurationExample();
+			 * List<String> queryName = new ArrayList<String>();
+			 * queryName.add("platform_resource_code");
+			 * queryName.add("private_key"); queryName.add("unicast_port");
+			 * queryName.add("multicast_ip"); queryName.add("timeZone_set");
+			 * systemConfigurationExample.createCriteria().
+			 * andFConfigurationNameIn(queryName).andFDeleteFlagNotEqualTo(true)
+			 * ; List<TSystemConfiguration> configurations =
+			 * tSystemConfigurationMapper
+			 * .selectByExample(systemConfigurationExample); for (int i = 0; i <
+			 * configurations.size(); i++) { if
+			 * (configurations.get(i).getfConfigurationName().equals(
+			 * "platform_resource_code")) {
+			 * ipVideoVO.setPlatformResourceCode(configurations.get(i).
+			 * getfConfigurationValue());
+			 * ipvo.setPlatformResourceCode(configurations.get(i).
+			 * getfConfigurationValue()); } else if
+			 * (configurations.get(i).getfConfigurationName().equals(
+			 * "private_key")) { ipVideoVO.setPrivateKey(configurations.get(i).
+			 * getfConfigurationValue());
+			 * ipvo.setPrivateKey(configurations.get(i).getfConfigurationValue()
+			 * ); }else if(configurations.get(i).getfConfigurationName().equals(
+			 * "unicast_port")){
+			 * ipvo.setIpPlayPort(configurations.get(i).getfConfigurationValue()
+			 * ); }else if(configurations.get(i).getfConfigurationName().equals(
+			 * "multicast_ip")){
+			 * ipvo.setServiceIp(configurations.get(i).getfConfigurationValue())
+			 * ; }else if(configurations.get(i).getfConfigurationName().equals(
+			 * "timeZone_set")){
+			 * ipvo.setTimeZoneSet(configurations.get(i).getfConfigurationValue(
+			 * )); ipVideoVO.setTimeZoneSet(configurations.get(i).
+			 * getfConfigurationValue()); }
+			 * 
+			 * }
+			 */
+			String ipPlayPort = ipvo.getIpPlayPort();
+			int videoPort = Integer.parseInt(ipPlayPort)+1;
+			ipvo.setIpPlayPort(String.valueOf(videoPort));
+			String audioUrl = "http://" + ipvo.getServiceIp() + ":" + ipvo.getIpPlayPort() + "/video";
+			String asciiUrl = UDPUtil.stringToAscii(audioUrl);
+			int ascLen = asciiUrl.length();
+			String len = SendIPThread.getRealLenth(Integer.toHexString(13 + ascLen / 2)); // 13=9+2+2
+																							// 9字节保留信息
+																							// 2字节pid
+																							// 1字节音频传输协议类型http
+																							// 第2个字节标识音频编码类型
+			ipVideoVO.setLen(len);
+			ipVideoVO.setAudioURL(audioUrl);
+			ipvo.setAudioPid("0000"); // 音频pid为0000 表示不用
+			ipvo.setIpVideoVO(ipVideoVO);
+		}
+		SendIPThread.waitSendList.add(ipvo);
+		// 视频播放发送
+		IpVideoVO ipVideoVO = ipvo.getIpVideoVO();
+		if (ipVideoVO != null) {
+			String audioName = null;
+			if (contentOrUrl != null) {
+				audioName = contentOrUrl.substring(contentOrUrl.lastIndexOf("/") + 1);
+			}
+			String audioUrl = ipvo.getBroadcastTomcatPath() + "/webapps/ROOT/upload/other/" + audioName;
+			File file = new File(audioUrl);
+			if (!file.exists()) {
+				return BroadcastResult.fail("视频文件不存在,播发失败!");
+			}
+			Thread sendIPThread = new Thread(new SendIPThread(2, ipvo, broadcastService));
+			sendIPThread.start();
+		}
+
+		return BroadcastResult.ok();
+	}
+
+	/**
+	 * @author lxg 根据广播选中的区域查询对应的设备
+	 * @param resourceId
+	 * @param broadcastfId
+	 * @param type
+	 */
+
+	@Override
+	@Transactional
+	public void addDeviceByResourceIds(String resourceId, Integer broadcastfId, Integer type) {
+		// 广播ID对应的区域下的所有适配器和音柱
+		// 先判断区域是否是 县，是，所有的。
+		// 不是，是否包含镇，包含，根据镇的找到村的区域，根据村查询出所有的适配器和音柱；是否包含村,包含村，根据村查询设备
+		List<Integer> deviceIds = tAdministrativeDivisionService.getDeviceByrResourceIds(resourceId);
+		// 遍历,插入到b_broadcast_device
+		if (deviceIds.size() > 0) {
+			for (Integer deviceId : deviceIds) {
+				BBroadcastDevice broadcastDevice = new BBroadcastDevice();
+				broadcastDevice.setfBroadcastId(broadcastfId);
+				broadcastDevice.setfDeviceId(deviceId);
+				broadcastDevice.setfIsTimingBroadcast(type == BroadcastTypeEnum.timing.getCode() ? true : false);
+				broadcastDevice.setfBroadcastSendTime(new Date());
+				broadcastDeviceService.insert(broadcastDevice);
+			}
+		}
+	}
+
+	/**
+	 * @author lxg 将对应设备插入到设备广播表中
+	 * @param resourceId
+	 *            设备资源码
+	 * @param broadcastfId
+	 *            广播id
+	 * @param type
+	 */
+	@Override
+	@Transactional
+	public void addDeviceResourceIds(String resourceId, Integer broadcastfId, Integer type) {
+		// TODO 只添加对应的设备资源码到设备广播表中 每种广播中添加判断是否是设备广播
+		String[] deviceIds = resourceId.split(",");
+		// 遍历,插入到b_broadcast_device
+		if (deviceIds.length > 0) {
+			for (String deviceId : deviceIds) {
+				BBroadcastDevice broadcastDevice = new BBroadcastDevice();
+				broadcastDevice.setfBroadcastId(broadcastfId);
+				broadcastDevice.setfDeviceId(Integer.parseInt(deviceId));
+				broadcastDevice.setfIsTimingBroadcast(type == BroadcastTypeEnum.timing.getCode() ? true : false);
+				broadcastDevice.setfBroadcastSendTime(new Date());
+				broadcastDeviceService.insert(broadcastDevice);
+			}
+		}
+	}
+	
+	public static int getTxtLen(String str) {
+		int len = 0;
+		char[] chars = str.toCharArray();
+		//boolean isGB2312 = false;
+		for (int i = 0; i < chars.length; i++) {
+			byte[] bytes = ("" + chars[i]).getBytes();
+			if (bytes.length != 1) {
+				int[] ints = new int[2];
+				ints[0] = bytes[0] & 0xff;
+				ints[1] = bytes[1] & 0xff;
+
+				if (ints[0] >= 0x81 && ints[0] <= 0xFE && ints[1] >= 0x40 && ints[1] <= 0xFE) {
+					//isGB2312 = true;
+					len+=2;
+				}else{
+					len+=1;
+				}
+			}else{
+				len+=1;
+			}
+		}
+		return len;
+	}
+
+}

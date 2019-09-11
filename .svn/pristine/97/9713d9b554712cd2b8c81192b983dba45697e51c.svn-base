@@ -1,0 +1,24 @@
+#database info
+hibernate.dialect=org.hibernate.dialect.MySQLDialect
+driverClassName=com.mysql.jdbc.Driver
+validationQuery=SELECT 1
+hibernate.hbm2ddl.auto=update
+hibernate.show_sql=false
+hibernate.format_sql=true
+jdbc_url=jdbc:mysql://localhost:3306/broadcast?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull
+jdbc_username=root
+jdbc_password=root
+
+#upload  url
+#local url
+#upload.prefix.url=http://localhost:8080/broadcast-web/
+#remote server url
+upload.prefix.url=http://10.177.3.205:8080/
+
+#backup
+backup.path=/backup/
+
+# 省级平台解析服务器的心跳检测地址
+provincial.server.heart=http://10.177.3.205:8082/broadcast-provincial-web/heart/check
+# 播控WEB服务器发布的Tomcat的端口号
+dispatch.server.tomcat.port=8083

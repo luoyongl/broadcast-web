@@ -1,0 +1,14 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="broadcast-receive-web:war">
+    <output-path>$PROJECT_DIR$/broadcast-receive-web/target</output-path>
+    <properties id="maven-jee-properties">
+      <options>
+        <module>broadcast-receive-web</module>
+        <packaging>war</packaging>
+      </options>
+    </properties>
+    <root id="archive" name="broadcast-receive-web-0.0.1-SNAPSHOT.war">
+      <element id="artifact" artifact-name="broadcast-receive-web:war exploded" />
+    </root>
+  </artifact>
+</component>

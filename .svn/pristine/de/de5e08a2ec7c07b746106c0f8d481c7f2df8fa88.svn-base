@@ -1,0 +1,54 @@
+package cn.wtu.broadcast.controller.monitor;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import com.github.pagehelper.PageInfo;
+import cn.wtu.broadcast.openapi.api.TransmitterService;
+import cn.wtu.broadcast.openapi.vo.TransmitterVO;
+import cn.wtu.broadcast.parent.pojo.BroadcastResult;
+
+/**
+ * 
+ * @author dongxu.wang
+ *
+ */
+@Controller
+@RequestMapping("monitor/transmitterEquipment")
+public class TransmitterController {
+	
+	@Autowired
+    private TransmitterService transmitterService;
+    @GetMapping
+    public String ui() {
+        return "monitor/transmitterEquipment";
+    }
+
+    @RequestMapping(value = "/querytransmitterEquipment")
+    @ResponseBody
+    public BroadcastResult queryEransmitterEquipment(@RequestParam(defaultValue = "1", required = false) Integer pageNumber,
+            @RequestParam(defaultValue = "10", required = false) Integer pageSize,
+            @RequestParam(defaultValue = "", required = false) String searchText,
+            @RequestParam(defaultValue = "desc", required = false) String sortOrder,
+            @RequestParam(defaultValue = "fCreateTime", required = false) String sortName) {
+    	 Map<String, Object> paramMap = new HashMap<>(4);
+         paramMap.put("pageNumber", pageNumber);
+         paramMap.put("pageSize", pageSize);
+         paramMap.put("searchText", searchText);
+         //paramMap.put("sortOrder", sortOrder);
+		/*
+		 * if (sortName.equals("fCreateTime")) { paramMap.put("sortName",
+		 * "f_create_time"); }
+		 */
+         paramMap.put("searchText", searchText);
+    	PageInfo<TransmitterVO> listTransmitter = transmitterService.queryAllTransmitterInfo(paramMap);
+    	return BroadcastResult.ok(listTransmitter);  	
+    }
+
+}

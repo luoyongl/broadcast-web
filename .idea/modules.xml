@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/broadcast-base-api/broadcast-base-api.iml" filepath="$PROJECT_DIR$/broadcast-base-api/broadcast-base-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-base-provider/broadcast-base-provider.iml" filepath="$PROJECT_DIR$/broadcast-base-provider/broadcast-base-provider.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-common/broadcast-common.iml" filepath="$PROJECT_DIR$/broadcast-common/broadcast-common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-dispatch-api/broadcast-dispatch-api.iml" filepath="$PROJECT_DIR$/broadcast-dispatch-api/broadcast-dispatch-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-dispatch-provider/broadcast-dispatch-provider.iml" filepath="$PROJECT_DIR$/broadcast-dispatch-provider/broadcast-dispatch-provider.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-dispatch-web/broadcast-dispatch-web.iml" filepath="$PROJECT_DIR$/broadcast-dispatch-web/broadcast-dispatch-web.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-make-api/broadcast-make-api.iml" filepath="$PROJECT_DIR$/broadcast-make-api/broadcast-make-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-make-provider/broadcast-make-provider.iml" filepath="$PROJECT_DIR$/broadcast-make-provider/broadcast-make-provider.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-provincial-web/broadcast-provincial-web.iml" filepath="$PROJECT_DIR$/broadcast-provincial-web/broadcast-provincial-web.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-receive-api/broadcast-receive-api.iml" filepath="$PROJECT_DIR$/broadcast-receive-api/broadcast-receive-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-receive-provider/broadcast-receive-provider.iml" filepath="$PROJECT_DIR$/broadcast-receive-provider/broadcast-receive-provider.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-receive-web/broadcast-receive-web.iml" filepath="$PROJECT_DIR$/broadcast-receive-web/broadcast-receive-web.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-sms/broadcast-sms.iml" filepath="$PROJECT_DIR$/broadcast-sms/broadcast-sms.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broadcast-web/broadcast-web.iml" filepath="$PROJECT_DIR$/broadcast-web/broadcast-web.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/broadcast-web-parent.iml" filepath="$PROJECT_DIR$/.idea/broadcast-web-parent.iml" />
+    </modules>
+  </component>
+</project>

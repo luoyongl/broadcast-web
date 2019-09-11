@@ -1,0 +1,74 @@
+package cn.wtu.broadcast.controller;
+
+import org.apache.commons.io.input.TeeInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.wtu.broadcast.openapi.api.TSStreamPackagedService;
+import cn.wtu.broadcast.openapi.api.ThirdBroadcastDataService;
+import cn.wtu.broadcast.openapi.util.UDPUtil;
+import cn.wtu.broadcast.parent.enums.BroadcastTypeEnum;
+import cn.wtu.broadcast.parent.pojo.BroadcastResult;
+import cn.wtu.broadcast.parent.vo.EBITParamsVO;
+
+@Controller
+@RequestMapping("ts")
+public class TSStreamSendController {
+
+	private Logger logger = LoggerFactory.getLogger(TeeInputStream.class);
+
+	@Autowired
+	private TSStreamPackagedService tsStreamPackagedService;
+	@Autowired
+	private ThirdBroadcastDataService thirdBroadcastDataService;
+
+	/**
+	 * 
+	 * @param ip   IP
+	 * @param port 端口
+	 * @param type 1: 索引  2：内容  3：配置
+	 * @return
+	 */
+	@RequestMapping("/tsStreamSend")
+	@ResponseBody
+	public BroadcastResult tsStreamSend(@RequestParam(value = "ip", required = true) String ip,
+			@RequestParam(value = "port", required = true) Integer port,
+			@RequestParam(value = "type", required = true) Integer type) {
+		byte[] data = null;
+		int length = 0; 
+		try {
+			if(type == 1){
+				EBITParamsVO paramsVO = thirdBroadcastDataService.getModelByBroadcastTypeAndId(BroadcastTypeEnum.emergency.getCode(),1);
+				data = tsStreamPackagedService.getEBITTsData(paramsVO,paramsVO.getDVBC_parameter());
+				length = data.length;
+			} else if(type == 2){/*
+				EBCTTsDataVO ebCTTsDataVO = tsStreamPackagedService.getEBCTTsData(paramsVO);
+				data = ebCTTsDataVO.getData();
+				length = ebCTTsDataVO.getLength();*/
+			} else if(type == 3){
+				/*data = tsStreamPackagedService.getEBCONTTsData(new EBITParamsVO());
+				length = data.length;*/
+			}
+			UDPUtil.udpSend(data, length, ip, port);
+		} catch (Exception e) {
+			logger.error(e.getMessage() + e);
+		}
+
+		return BroadcastResult.ok();
+	}
+	
+	@RequestMapping("/test")
+	@ResponseBody
+	public BroadcastResult test(Integer fId) {
+
+			EBITParamsVO paramsVO = thirdBroadcastDataService.getModelByBroadcastTypeAndId(BroadcastTypeEnum.emergency.getCode(),fId);
+	
+             System.out.println(paramsVO);
+		return BroadcastResult.ok();
+	}
+}

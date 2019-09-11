@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cn.wtu.broadcast.openapi.dao.TransmitterMapper" >
+  <resultMap id="BaseMap" type="cn.wtu.broadcast.openapi.vo.TransmitterVO" >
+    <result column="id" property="id" jdbcType="INTEGER" />
+    <result column="transmitterId" property="transmitterId" jdbcType="VARCHAR" />
+    <result column="transmitterName" property="transmitterName" jdbcType="VARCHAR" />
+    <result column="adapterName" property="adapterName" jdbcType="VARCHAR" />
+    <result column="region" property="region" jdbcType="VARCHAR" />
+    <result column="installArea" property="installArea" jdbcType="VARCHAR" />
+    <result column="physicalCode" property="physicalCode" jdbcType="VARCHAR" />
+    <result column="transmitterState" property="transmitterState" jdbcType="INTEGER" />
+    <result column="transmitterOutputFrequency" property="transmitterOutputFrequency" jdbcType="VARCHAR" />
+    <result column="outputPower" property="outputPower" jdbcType="VARCHAR" />
+    <result column="equipmentTemperature" property="equipmentTemperature" jdbcType="VARCHAR" />
+    <result column="transmitterOperatingVoltage" property="transmitterOperatingVoltage" jdbcType="VARCHAR" />
+    <result column="transmitterOperatingCurrent" property="transmitterOperatingCurrent" jdbcType="VARCHAR" />
+    <result column="transmitterReflectionPower" property="transmitterReflectionPower" jdbcType="VARCHAR" />
+    <result column="leftChannelModulation" property="leftChannelModulation" jdbcType="VARCHAR" />
+    <result column="rightChannelModulation" property="rightChannelModulation" jdbcType="VARCHAR" />
+    <result column="harmonicChannelModulation" property="harmonicChannelModulation" jdbcType="VARCHAR" />
+    <result column="differentialChannelModulation" property="differentialChannelModulation" jdbcType="VARCHAR" />
+    <result column="rfLockInState" property="rfLockInState" jdbcType="INTEGER" /> 
+    <result column="pllLockInState" property="pllLockInState" jdbcType="INTEGER" />  
+    <result column="backTime" property="backTime" jdbcType="VARCHAR" />
+    <result column="adapterId" property="adapterId" jdbcType="INTEGER" />
+  </resultMap>
+  
+  <select id="queryAllTransmitterInfo" parameterType="java.util.Map" resultMap="BaseMap">
+    select * from transmitterInfo where 1=1
+   <if test="searchText!='' and searchText!=null">
+            AND(
+            transmitterId LIKE binary CONCAT('%',#{searchText},'%') or
+            transmitterName LIKE binary CONCAT('%',#{searchText},'%') or
+            adapterName LIKE binary CONCAT('%',#{searchText},'%') or
+            region LIKE binary CONCAT('%',#{searchText},'%') or
+            installArea LIKE binary CONCAT('%',#{searchText},'%') or
+            physicalCode LIKE binary CONCAT('%',#{searchText},'%') or
+            resourceCode LIKE binary CONCAT('%',#{searchText},'%')
+            )
+     </if>
+  </select>
+  
+  <insert id="insertTransmitterInfo" parameterType="cn.wtu.broadcast.openapi.vo.TransmitterVO" >
+    insert into transmitterInfo
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="transmitterId != null" >
+        transmitterId,
+      </if>
+      <if test="transmitterName != null" >
+        transmitterName,
+      </if>
+      <if test="adapterName != null" >
+        adapterName,
+      </if>
+      <if test="region != null" >
+        region,
+      </if>
+      <if test="installArea != null" >
+        installArea,
+      </if>
+      <if test="physicalCode != null" >
+        physicalCode,
+      </if>
+      <if test="resourceCode != null" >
+        resourceCode,
+      </if>
+      <if test="transmitterState != null" >
+        transmitterState,
+      </if>
+      <if test="transmitterOutputFrequency != null" >
+        transmitterOutputFrequency,
+      </if>
+      <if test="outputPower != null" >
+        outputPower,
+      </if>
+      <if test="equipmentTemperature != null" >
+        equipmentTemperature,
+      </if>
+      <if test="transmitterOperatingVoltage != null" >
+        transmitterOperatingVoltage,
+      </if>
+      <if test="transmitterOperatingCurrent != null" >
+        transmitterOperatingCurrent,
+      </if>
+      <if test="transmitterReflectionPower != null" >
+        transmitterReflectionPower,
+      </if>
+      <if test="leftChannelModulation != null" >
+        leftChannelModulation,
+      </if>
+      <if test="rightChannelModulation != null" >
+        rightChannelModulation,
+      </if>
+      <if test="harmonicChannelModulation != null" >
+        harmonicChannelModulation,
+      </if>
+      <if test="differentialChannelModulation != null" >
+        differentialChannelModulation,
+      </if>
+      <if test="rfLockInState != null" >
+        rfLockInState,
+      </if>
+      <if test="pllLockInState != null" >
+        pllLockInState,
+      </if>
+      <if test="backTime != null" >
+        backTime,
+      </if>
+      <if test="adapterId != null" >
+        adapterId,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="transmitterId != null" >
+        #{transmitterId,jdbcType=VARCHAR},
+      </if>
+      <if test="transmitterName != null" >
+        #{transmitterName,jdbcType=VARCHAR},
+      </if>
+      <if test="adapterName != null" >
+        #{adapterName,jdbcType=VARCHAR},
+      </if>
+      <if test="region != null" >
+        #{region,jdbcType=TINYINT},
+      </if>
+      <if test="installArea != null" >
+        #{installArea,jdbcType=VARCHAR},
+      </if>
+      <if test="physicalCode != null" >
+        #{physicalCode,jdbcType=TINYINT},
+      </if>
+      <if test="resourceCode != null" >
+        #{resourceCode,jdbcType=TIMESTAMP},
+      </if>
+      <if test="transmitterState != null" >
+        #{transmitterState,jdbcType=INTEGER},
+      </if>
+      <if test="transmitterOutputFrequency != null" >
+        #{transmitterOutputFrequency,jdbcType=TIMESTAMP},
+      </if>
+      <if test="outputPower != null" >
+        #{outputPower,jdbcType=INTEGER},
+      </if>
+      <if test="equipmentTemperature != null" >
+        #{equipmentTemperature,jdbcType=BIT},
+      </if>
+      <if test="transmitterOperatingVoltage != null" >
+        #{transmitterOperatingVoltage,jdbcType=VARCHAR},
+      </if>
+       <if test="transmitterOperatingCurrent != null" >
+        #{transmitterOperatingCurrent,jdbcType=VARCHAR},
+      </if>
+       <if test="transmitterReflectionPower != null" >
+        #{transmitterReflectionPower,jdbcType=VARCHAR},
+      </if>
+       <if test="leftChannelModulation != null" >
+        #{leftChannelModulation,jdbcType=VARCHAR},
+      </if>
+       <if test="rightChannelModulation != null" >
+        #{rightChannelModulation,jdbcType=VARCHAR},
+      </if>
+       <if test="harmonicChannelModulation != null" >
+        #{harmonicChannelModulation,jdbcType=VARCHAR},
+      </if>
+       <if test="differentialChannelModulation != null" >
+        #{differentialChannelModulation,jdbcType=VARCHAR},
+      </if>
+      <if test="rfLockInState != null" >
+        #{rfLockInState,jdbcType=INTEGER},
+      </if>
+      <if test="pllLockInState != null" >
+        #{pllLockInState,jdbcType=INTEGER},
+      </if>
+      <if test="backTime != null" >
+        #{backTime,jdbcType=VARCHAR},
+      </if>
+      <if test="adapterId != null" >
+        #{adapterId,jdbcType=INTEGER},
+      </if>
+    </trim>
+  </insert>
+
+<update id="updateTransmitterInfo" parameterType="cn.wtu.broadcast.openapi.vo.TransmitterVO" >
+    update transmitterInfo
+    <set>
+      <if test="transmitterName != null" >
+        transmitterName = #{transmitterName,jdbcType=VARCHAR},
+      </if>
+      <if test="adapterName != null" >
+        adapterName = #{adapterName,jdbcType=VARCHAR},
+      </if>
+      <if test="region != null" >
+        region = #{region,jdbcType=VARCHAR},
+      </if>
+      <if test="installArea != null" >
+        installArea = #{installArea,jdbcType=VARCHAR},
+      </if>
+      <if test="physicalCode != null" >
+        physicalCode = #{physicalCode,jdbcType=VARCHAR},
+      </if>
+      <if test="resourceCode != null" >
+        resourceCode = #{resourceCode,jdbcType=VARCHAR},
+      </if>
+      <if test="transmitterState != null" >
+        transmitterState = #{transmitterState,jdbcType=INTEGER},
+      </if>
+      <if test="transmitterOutputFrequency != null" >
+        transmitterOutputFrequency = #{transmitterOutputFrequency,jdbcType=VARCHAR},
+      </if>
+      <if test="outputPower != null" >
+        outputPower = #{outputPower,jdbcType=VARCHAR},
+      </if>
+      <if test="equipmentTemperature != null" >
+        equipmentTemperature = #{equipmentTemperature,jdbcType=VARCHAR},
+      </if>
+      <if test="transmitterOperatingVoltage != null" >
+        transmitterOperatingVoltage = #{transmitterOperatingVoltage,jdbcType=VARCHAR},
+      </if>
+      <if test="transmitterOperatingCurrent != null" >
+        transmitterOperatingCurrent = #{transmitterOperatingCurrent,jdbcType=VARCHAR},
+      </if>
+      <if test="transmitterReflectionPower != null" >
+        transmitterReflectionPower = #{transmitterReflectionPower,jdbcType=VARCHAR},
+      </if>
+      <if test="leftChannelModulation != null" >
+        leftChannelModulation = #{leftChannelModulation,jdbcType=VARCHAR},
+      </if>
+      <if test="rightChannelModulation != null" >
+        rightChannelModulation = #{rightChannelModulation,jdbcType=VARCHAR},
+      </if>
+      <if test="harmonicChannelModulation != null" >
+        harmonicChannelModulation = #{harmonicChannelModulation,jdbcType=VARCHAR},
+      </if>
+      <if test="differentialChannelModulation != null" >
+        differentialChannelModulation = #{differentialChannelModulation,jdbcType=VARCHAR},
+      </if>
+      <if test="rfLockInState != null" >
+        rfLockInState = #{rfLockInState,jdbcType=INTEGER},
+      </if>
+      <if test="pllLockInState != null" >
+        pllLockInState = #{pllLockInState,jdbcType=INTEGER},
+      </if>
+      <if test="backTime != null" >
+        backTime = #{backTime,jdbcType=VARCHAR},
+      </if>
+      <if test="adapterId != null" >
+        adapterId = #{adapterId,jdbcType=INTEGER},
+      </if>
+    </set>
+    where transmitterId = #{transmitterId,jdbcType=VARCHAR}
+  </update>
+  
+  <delete id="deleteTransmitterInfo" parameterType="java.lang.String" >
+    delete from transmitterInfo
+    where transmitterId = #{transmitterId,jdbcType=VARCHAR}
+  </delete>
+</mapper>
